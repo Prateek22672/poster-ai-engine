@@ -1,0 +1,250 @@
+================================================================================
+ INTEGRATION GUIDE — Connecting the Next.js Design Engine to a PHP / cPanel Product
+ (For the manager / decision-maker. Plain English + technical detail.)
+================================================================================
+Last updated: 2026-06-04
+
+PURPOSE OF THIS FILE
+  The client runs an existing product on cPanel hosting using PHP + (likely) MySQL,
+  paying ~ $1000/year. We built a separate, modern "Design Engine" using Next.js +
+  RAG (AI). This document explains, honestly and concretely:
+    1. CAN these two be connected? (Short answer: YES, reliably.)
+    2. WHAT is the best, safest way to connect them?
+    3. HOW does the automation work (auto-posting posters to social media)?
+    4. What are the LIMITATIONS, and the MITIGATIONS for each?
+    5. What to tell the client so they feel confident — no old data/projects at risk.
+
+
+================================================================================
+ 1. THE CORE PRINCIPLE (the single most important idea)
+================================================================================
+  DO NOT try to "convert" or "merge" our Next.js app INTO their PHP code.
+  That would be slow, risky, and unnecessary.
+
+  INSTEAD: run our engine as a SEPARATE SERVICE and let the two talk over the
+  internet using a simple, well-defined API (just HTTP requests, like any website
+  calling any other website).
+
+  Think of it like this:
+    - Their PHP site = the "shop floor" the client already owns and trusts.
+    - Our engine    = a specialist "machine in the back room" that makes posters.
+    - They are connected by a "conveyor belt" = a small HTTP API.
+    - PHP sends an order ("make a real-estate poster for this listing, this brand"),
+      the engine sends back a finished poster (an image URL + the design data).
+
+  WHY THIS IS SAFE:
+    - We DO NOT touch their existing PHP files, their MySQL database, or their
+      current projects. Our engine is ADDITIVE — it sits beside their system.
+    - If our engine is ever offline, their existing site keeps working exactly
+      as before. Zero risk to old data.
+
+
+================================================================================
+ 2. THE TECHNICAL REALITY: PHP vs Next.js (explained simply)
+================================================================================
+  - PHP runs on classic cPanel/Apache. It is great at serving pages and talking
+    to MySQL. Their whole current product is built this way.
+  - Next.js is a NODE.js application. It needs a Node runtime to run (it is not PHP).
+  - So the real question is NOT "PHP vs Next.js"; it is:
+        "WHERE do we run the Node engine, and HOW does PHP call it?"
+
+  Good news: PHP can call ANY web API. Talking to our engine is the same as PHP
+  calling a payment gateway or Google Maps — a normal HTTPS request. This is a
+  100% standard, proven pattern used by countless real businesses.
+
+
+================================================================================
+ 3. WHERE TO HOST THE NODE ENGINE — 3 OPTIONS (with a clear recommendation)
+================================================================================
+  OPTION A (RECOMMENDED) — Engine on its own host, PHP stays on cPanel
+    - Host the Next.js engine on a Node-friendly platform:
+        * a small VPS, OR a managed platform (Vercel / Render / Railway / Fly.io).
+    - Point a subdomain at it, e.g.  engine.theirdomain.com
+    - Their PHP site stays exactly where it is (main domain, cPanel, MySQL).
+    - PHP calls https://engine.theirdomain.com/api/generate.
+    - PROS: cleanest, most reliable, easy to scale, zero impact on their hosting.
+    - This is the recommended path.
+
+  OPTION B — Engine INSIDE cPanel using "Setup Node.js App"
+    - Many modern cPanel hosts (CloudLinux + Phusion Passenger) include a
+      "Setup Node.js App" / "Application Manager" tool.
+    - We deploy the built Next.js app there and map it to a subdomain.
+    - PHP (main domain) and Node engine (subdomain) live on the SAME cPanel account,
+      side by side. Their MySQL + PHP are untouched.
+    - PROS: everything under one hosting bill they already pay.
+    - CHECK FIRST: does their cPanel plan show "Setup Node.js App"? Which Node
+      version? Are background/long-running processes allowed? Shared plans can be
+      limited (CPU/RAM/timeouts). If limited -> use Option A.
+
+  OPTION C — Not recommended: rewrite the engine in PHP.
+    - Possible in theory, but throws away the Next.js/React/RAG work and is much
+      slower to build and maintain. Only mention to show we considered it.
+
+  DECISION RULE: If their cPanel supports Node well -> Option B (one bill).
+                 Otherwise -> Option A (a cheap separate Node host). Both work.
+
+
+================================================================================
+ 4. RECOMMENDED ARCHITECTURE (picture)
+================================================================================
+            (Client's existing world)              (Our additive engine)
+   +-------------------------------+        +--------------------------------+
+   |  cPanel hosting               |        |  Next.js Design Engine (Node)  |
+   |  - PHP website (unchanged)    | HTTPS  |  /api/generate                 |
+   |  - MySQL (unchanged)          | -----> |  - intent (OpenAI)             |
+   |  - their existing projects    | <----- |  - RAG (Supabase pgvector)     |
+   |                               |  JSON  |  - photo (Pexels+Cloudinary)   |
+   |  Stores: poster URL +         |        |  - layout plan (OpenAI)        |
+   |          metadata in MySQL    |        |  - renders PNG -> Cloudinary   |
+   +---------------+---------------+        +----------------+---------------+
+                   |                                         |
+                   |  (final poster image URL is on Cloudinary, shared by both)
+                   v                                         v
+            Their PHP UI shows                        Cloudinary (image hosting)
+            / schedules the poster
+                   |
+                   v
+            Social media (Facebook/Instagram) via Graph API  (see Section 6)
+
+
+================================================================================
+ 5. HOW PHP TALKS TO THE ENGINE (concrete, step by step)
+================================================================================
+  STEP 1 — PHP makes a request (example, simplified):
+      POST https://engine.theirdomain.com/api/generate
+      Header: Authorization: Bearer <SHARED_SECRET_API_KEY>
+      Body (JSON): { "prompt": "...", "category": "realestate",
+                     "brandText": "Larana, Inc.", "ctaText": "Book a Viewing" }
+
+      In PHP this is a few lines with cURL or Guzzle — standard stuff.
+
+  STEP 2 — The engine returns JSON:
+      { "layout": {...design data...},
+        "imageUrl": "https://res.cloudinary.com/.../poster.png",
+        "templateId": "...", "prompt": "..." }
+
+  STEP 3 — PHP stores the result in THEIR MySQL:
+      e.g. a `posters` table: (id, client_id, image_url, prompt, created_at).
+      => Their data, their database. We only handed them a URL + some text.
+
+  STEP 4 — PHP displays it:
+      - Simplest: just <img src="the imageUrl"> in their existing PHP page.
+      - Richer: embed our editor screen in an <iframe> for live editing.
+
+  AUTHENTICATION between PHP and the engine:
+      - A shared secret API key (only on servers, never in the browser).
+      - HTTPS everywhere. Optionally restrict the engine to accept calls only from
+        their server IP. This keeps it private and secure.
+
+
+================================================================================
+ 6. AUTOMATION — auto-posting generated posters to social media
+================================================================================
+  GOAL: the engine acts as the "middle bone" — it produces a poster, and the system
+  automatically publishes it to Facebook (and later Instagram), no manual download.
+
+  HOW SOCIAL POSTING ACTUALLY WORKS (reality check):
+    - Facebook/Instagram posting is done via the official "Facebook Graph API".
+    - You need: a Facebook App, a Facebook PAGE, and a "Page Access Token" with the
+      right permissions (e.g. pages_manage_posts). For Instagram: an Instagram
+      Business account linked to that Page.
+    - You publish by sending the IMAGE URL (our Cloudinary URL) + caption to the
+      Graph API. Facebook fetches the image from the URL and posts it.
+    - NOTE: Facebook requires "App Review" to grant posting permissions for
+      production use, and a Business/Developer account. Plan for this step.
+
+  WHO SENDS THE POST? Two clean options:
+
+    OPTION 1 (RECOMMENDED) — PHP owns social posting.
+      - The engine just returns the poster image URL.
+      - PHP stores the Facebook tokens (in their system) and calls the Graph API
+        to publish. PHP ecosystems already have Facebook SDKs for this.
+      - PRO: tokens + scheduling stay inside the client's existing, trusted system.
+
+    OPTION 2 — The engine posts directly.
+      - The engine (Node) calls the Graph API itself after generating.
+      - PRO: fully automated end-to-end in one service.
+      - CON: the engine must securely hold the client's social tokens.
+
+    BEST PRACTICE for scale: add a small QUEUE (e.g. generate now, publish later /
+    on a schedule). PHP can manage a "scheduled_posts" table in MySQL and a cron
+    job (cPanel has cron) that publishes at the right time.
+
+  END-TO-END AUTOMATED FLOW:
+      PHP (or a cron) -> calls engine /api/generate -> gets image URL
+      -> PHP saves it -> PHP (or engine) calls Facebook Graph API with the URL
+      -> poster is live on the Page. Fully hands-free.
+
+
+================================================================================
+ 7. DATA & SAFETY — "will we lose old data or break the current site?"
+================================================================================
+  - NO. The integration is ADDITIVE and DECOUPLED.
+  - Their PHP files: untouched. Their MySQL: untouched (we only ADD a small table
+    if they want to store poster URLs — optional).
+  - Our engine uses its OWN database (Supabase) for the AI knowledge base. The two
+    databases never merge; they exchange data only through the API.
+  - If the engine is down, their existing product is unaffected.
+  - Rollback is trivial: stop calling the API. Nothing in their system depends on
+    our internals.
+
+
+================================================================================
+ 8. SECURITY CHECKLIST
+================================================================================
+  - All traffic over HTTPS.
+  - Engine protected by a server-side API key (never exposed in the browser).
+  - Optionally IP-allowlist the engine to the client's server.
+  - All third-party secrets (OpenAI, Pexels, Cloudinary, Facebook tokens) live in
+    server environment variables, never in client code or the repo.
+  - Rate limiting on /api/generate to control cost and abuse.
+  - The Cloudinary image URLs are public (so Facebook can fetch them) but unguessable.
+
+
+================================================================================
+ 9. FEASIBILITY VERDICT (the bottom line for the manager)
+================================================================================
+  YES — this is feasible, standard, and low-risk. We are not "forcing" two
+  incompatible systems together; we are connecting them the same proven way modern
+  software connects to payment gateways, maps, and email services: a clean HTTPS API.
+
+  - Their PHP + cPanel + MySQL world keeps running, untouched.
+  - Our engine adds a new capability (AI-designed posters + auto social posting).
+  - Connection effort is small (a few PHP API calls + storing a URL).
+  - It can grow later (more categories, scheduling, Instagram, analytics) without
+    re-architecting anything.
+
+
+================================================================================
+ 10. LIMITATIONS + MITIGATIONS (be upfront — it builds trust)
+================================================================================
+  LIMITATION                                MITIGATION
+  --------------------------------------    -----------------------------------------
+  Shared cPanel may not run Node well       Use Option A (cheap separate Node host /
+   (CPU/RAM/timeouts, no Node support).      Vercel/VPS). PHP still stays on cPanel.
+  Next.js cannot "become" PHP.              Don't convert it; connect via HTTP API.
+  Facebook needs App Review + tokens        Plan the review early; use a Business
+   for production posting.                   account; start with a test Page.
+  AI text calls cost money (OpenAI).        Cheap models + caching; NO image-gen cost
+                                             (we render posters ourselves).
+  External services (OpenAI/Pexels/         Graceful fallbacks; retries; the engine
+   Cloudinary) can have downtime.            failing never affects their main site.
+  Stock photos may not be the exact         Allow image replace/upload; per-industry
+   property/dish.                            queries; (future) client photo library.
+  First setup needs DevOps (deploy Node,    One-time task; documented; Option B keeps
+   subdomain, env vars, cron).               it inside their existing cPanel bill.
+
+
+================================================================================
+ 11. SUGGESTED ROLLOUT (phased, low-risk)
+================================================================================
+  Phase 1 — Stand up the engine on a subdomain; PHP calls /api/generate and shows
+            the returned poster image. (Proves the connection works.)
+  Phase 2 — Store poster URLs in their MySQL; add a simple gallery in their PHP UI.
+  Phase 3 — Add Facebook auto-posting (test Page first, then App Review).
+  Phase 4 — Add scheduling (cron + queue) and Instagram; analytics.
+  Phase 5 — Grow the AI design library (reference ingestion) for better output.
+
+================================================================================
+ END OF integration.txt
+================================================================================

@@ -1,0 +1,99 @@
+================================================================================
+ SECURITY — API key protection & secure architecture
+================================================================================
+Last updated: 2026-06-12
+Context: an OpenAI key was leaked and ran the account to -$300.
+
+────────────────────────────────────────────────────────────────────────────────
+ 0. THE MOST IMPORTANT TRUTH (read first)
+────────────────────────────────────────────────────────────────────────────────
+A LEAKED key is used DIRECTLY against api.openai.com by the attacker — it
+BYPASSES our backend entirely. Therefore our rate limits, queues, and spend
+guards CANNOT stop a stolen key. Only three things stop a leaked key:
+   1) ROTATE (delete) the key,
+   2) OpenAI IP-ALLOWLISTING (key only works from our server IP),
+   3) OpenAI PROJECT BUDGET + low limits.
+All three are OpenAI-dashboard actions, not code.
+
+In OUR codebase the key was already server-side only (never in the browser).
+The leak almost certainly came from the keys being shared as PLAINTEXT (chat,
+screenshots, a commit, a backup, or a teammate's machine) — not from the app.
+
+────────────────────────────────────────────────────────────────────────────────
+ 1. DO THIS NOW (you / the team — dashboard actions)
+────────────────────────────────────────────────────────────────────────────────
+[ ] REVOKE every existing OpenAI key (platform.openai.com → API keys → delete).
+[ ] Rotate the OTHER secrets too — they were shared in plaintext as well:
+       - Supabase service_role key + database password (Supabase → Settings)
+       - Cloudinary API secret (Cloudinary dashboard → roll key)
+       - Pexels API key (regenerate)
+[ ] Create an OpenAI PROJECT for production (separate from staging/dev).
+[ ] Create a RESTRICTED project key (only the permissions you need) — not "All".
+[ ] Enable IP ALLOWLISTING on the production key → only your server's public IP.
+       (Even a stolen key then fails from any other machine.)
+[ ] Set a PROJECT BUDGET (e.g. $50/mo) + alerts at 50/80/100%.
+       (Note: OpenAI budgets are mainly alerts, not a hard stop — pair with our
+        DAILY_BUDGET_USD guard below.)
+[ ] Put the new key ONLY in the server env / secret manager. Never in frontend,
+       mobile, WordPress/PHP theme, or client JS.
+[ ] Scan GitHub, server logs, .env backups, and chat history for any leaked keys.
+[ ] Confirm .env.local is gitignored (it is) and was never committed.
+
+────────────────────────────────────────────────────────────────────────────────
+ 2. WHAT WE IMPLEMENTED IN CODE (defense-in-depth for OUR endpoint)
+────────────────────────────────────────────────────────────────────────────────
+These protect our backend from abuse and prevent runaway spend THROUGH our app.
+All live in lib/security/guard.ts and are wired into /api/generate and
+/api/analyze-image. The normal user flow is unaffected.
+
+✅ Key is server-side only — used only in lib/ (API routes); never sent to the browser.
+✅ Frontend calls OUR backend (/api/generate), never api.openai.com directly.
+✅ RATE LIMITING — per-IP sliding window (default 12 req/min). 429 when exceeded.
+✅ DAILY SPEND KILL-SWITCH — DAILY_BUDGET_USD (default $5). Once today's logged
+   OpenAI spend reaches it, /api/generate returns 429 until tomorrow. DB-backed
+   (reads the api_usage table), so it is accurate and cannot be bypassed via our app.
+✅ INPUT VALIDATION — prompt required + max length, category whitelist, max upload size.
+✅ USAGE LOGGING — every call (model, tokens, cost) is recorded (api_usage) and shown
+   on /insights, so abnormal spend is visible immediately.
+✅ Seed endpoint protected by a secret (SEED_SECRET).
+
+Tunable via env (.env.local):
+   RATE_LIMIT_PER_MIN=12     DAILY_BUDGET_USD=5     MAX_PROMPT_LEN=2000
+
+NOTE on deployment: the rate limiter is in-memory (per Node instance). On a single
+VPS / cPanel Node app that is fine. On serverless or multi-instance, move it to
+Upstash Redis (same interface) — see roadmap.
+
+────────────────────────────────────────────────────────────────────────────────
+ 3. YOUR TARGET ARCHITECTURE — mapped to status
+────────────────────────────────────────────────────────────────────────────────
+Frontend → Backend API → Auth → Rate/Credit check → Queue → Worker → OpenAI →
+Storage → return image URL.
+
+  Frontend only calls our backend ........................... ✅ done
+  Key only in backend env ................................... ✅ done
+  Rate limit (IP) ........................................... ✅ done
+  Daily spend cap / kill-switch ............................. ✅ done (our guard)
+  Input validation .......................................... ✅ done
+  Usage logs ................................................ ✅ done (/insights)
+  Cloud storage for images .................................. ✅ done (Cloudinary)
+  Auth + per-user permission check .......................... ⏳ roadmap (no login yet)
+  Per-USER credit/billing system ............................ ⏳ roadmap
+  Job QUEUE (BullMQ+Redis) + worker server .................. ⏳ roadmap (see note)
+  IP allowlisting on the key ................................ ⚠ OpenAI dashboard (do now)
+  Project-based restricted keys + budget .................... ⚠ OpenAI dashboard (do now)
+
+Why queue/auth/credits are "roadmap": they matter when you have logged-in users
+paying per generation. Today this is a single trusted app; the rate limit + daily
+cap already prevent runaway cost. Add auth+credits+queue when you open it to
+external users. (For real-estate, generation is deterministic + cheap (~$0.0002),
+so queueing is low priority there.)
+
+────────────────────────────────────────────────────────────────────────────────
+ 4. ONGOING HYGIENE
+────────────────────────────────────────────────────────────────────────────────
+- Rotate keys on a schedule (e.g. every 90 days) and immediately if anything leaks.
+- Never paste secrets into chat, tickets, or screenshots.
+- Watch /insights daily; set the OpenAI budget alerts.
+- Keep DAILY_BUDGET_USD set to a sane ceiling for your real usage.
+================================================================================

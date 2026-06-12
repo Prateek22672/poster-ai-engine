@@ -1,0 +1,374 @@
+================================================================================
+ POSTER-AI — 360° PROJECT DOCUMENTATION
+ (What it is, how it works, the RAG pipeline, the flow, and how to learn it)
+================================================================================
+Last updated: 2026-06-04
+
+This file is written so that ANYONE on the team (including someone new to AI) can
+understand the whole system, learn the concepts, and start contributing.
+It mixes SIMPLE explanations with the TECHNICAL detail underneath each one.
+
+
+================================================================================
+ 0. THE ONE-LINE IDEA (read this first)
+================================================================================
+PosterAI is a "DESIGN ENGINE", not an "image generator".
+
+  - It does NOT ask an AI to "paint a poster" (like DALL·E / Midjourney).
+  - Instead, the AI acts as a DESIGNER'S BRAIN: it decides the LAYOUT
+    (what text goes where, which colors, which fonts, where the photo sits,
+    where the button/CTA goes) and outputs that plan as STRUCTURED DATA (JSON).
+  - A normal web canvas (Konva) then DRAWS that plan into a real poster image.
+  - Real background photos come from a FREE stock photo API (Pexels).
+
+WHY THIS MATTERS (the business reason):
+  - Generative image AI (DALL·E etc.) is expensive, slow, unpredictable, and
+    you cannot easily edit the result (text is often garbled).
+  - Our approach is CHEAP, FAST, EDITABLE, ON-BRAND, and CONSISTENT.
+  - We use OpenAI only for "thinking" (cheap text tasks), NOT for "drawing pixels".
+
+  => This is the cost-cutting decision: REPLACE image-generation-by-AI with a
+     DESIGN SYSTEM + LAYOUT PLANNING. OpenAI's vision is used only to help the
+     RAG knowledge base learn from real reference posters (see Section 6).
+
+
+================================================================================
+ 1. TECHNOLOGY STACK (what we used, and WHAT FOR)
+================================================================================
+FRONTEND / FRAMEWORK
+  - Next.js 15 (App Router)   -> the whole app: BOTH the website (UI) AND the
+                                 backend API live in one project, one server.
+  - React 19                  -> builds the user interface.
+  - TypeScript                -> typed JavaScript; catches mistakes early.
+  - Tailwind CSS              -> styling the UI quickly with utility classes.
+  - Radix UI                  -> ready-made accessible UI parts (select, tabs...).
+  - Framer Motion             -> animations (loading spinner, transitions).
+  - lucide-react              -> icons.
+
+POSTER RENDERING (turning the layout plan into a real image)
+  - Konva + react-konva 19    -> an HTML5 <canvas> drawing library. We draw the
+                                 background photo, text, shapes, CTA, etc. onto a
+                                 1080x1350 canvas, then export it as a PNG.
+  - use-image                 -> loads photos into the canvas.
+
+THE "BRAIN" (AI)  — text/vision only, NEVER image generation
+  - OpenAI API:
+      * text-embedding-3-small -> turns text into vectors (numbers) for RAG search.
+      * gpt-4o-mini            -> "intent extraction" (cheap): reads the user's
+                                  prompt and outputs structured fields.
+      * gpt-4o                 -> "layout planning": designs the poster as JSON.
+      * gpt-4o (vision)        -> reads reference poster IMAGES to learn design
+                                  patterns (used to grow the RAG knowledge base).
+
+KNOWLEDGE BASE / DATABASE (RAG)
+  - Supabase (hosted Postgres) -> our database.
+  - pgvector (Postgres ext.)   -> stores "embeddings" and does vector similarity
+                                  search (the core of RAG).
+  - "pg" (node-postgres)       -> only used by our migration/seed scripts.
+
+IMAGES
+  - Pexels API (FREE)          -> fetches real, high-quality background photos.
+  - Cloudinary                 -> (a) optimizes + proxies the Pexels photo so the
+                                  canvas can use it safely (CORS), (b) hosts the
+                                  final exported poster image.
+
+FONTS
+  - Google Fonts + Fontshare   -> premium web fonts (Switzer via Fontshare; Inter,
+                                  Playfair Display, Outfit, Oswald, Syne, etc.
+                                  via Google). Loaded on demand for the canvas.
+
+OTHER
+  - zod        -> validates data shapes.
+  - uuid       -> unique IDs for layers/posters.
+  - sharp      -> server-side image processing (available; used by Next/Cloudinary).
+
+
+================================================================================
+ 2. PROJECT MAP (where things live)
+================================================================================
+app/
+  page.tsx                 -> home (redirects to /create)
+  create/page.tsx          -> the main "create a poster" screen (form + editor)
+  gallery/page.tsx         -> saved posters
+  api/
+    generate/route.ts      -> POST: the MAIN endpoint. Prompt in -> poster out.
+    analyze-image/route.ts -> POST: vision analysis of a reference image.
+    export/route.ts        -> POST: upload final poster to Cloudinary.
+    seed/route.ts          -> POST: load design templates into the DB (one-time).
+
+lib/
+  ai/
+    orchestrator.ts        -> the conductor: runs the whole pipeline in order.
+    intent-extractor.ts    -> prompt -> structured "intent" (OpenAI).
+    layout-planner.ts      -> intent + templates + photo -> poster JSON (OpenAI).
+    image-analyzer.ts      -> reference image -> design attributes (OpenAI vision).
+  rag/
+    embedder.ts            -> text -> 1536-number vector (OpenAI embeddings).
+    retriever.ts           -> search the design-template knowledge base.
+    seeder.ts              -> insert templates + their embeddings into the DB.
+  images/
+    pexels.ts              -> fetch a photo from Pexels + proxy via Cloudinary.
+  design-system/
+    tokens.ts              -> "design recipes" per category+style.
+    colors.ts              -> color palettes.
+    typography.ts          -> font catalog + font-pair recipes + font URL builders.
+    spacing.ts             -> spacing/grid system.
+  rendering/
+    engine.ts              -> converts our layer JSON -> Konva canvas props.
+    font-loader.ts         -> loads Google + Fontshare fonts before drawing.
+  cloudinary/upload.ts     -> upload images to Cloudinary.
+  supabase/client.ts       -> database connection.
+
+components/
+  forms/PosterForm.tsx     -> the input form (prompt, category, brand, etc.).
+  poster/PosterCanvas*.tsx -> the canvas that draws the poster.
+
+types/                     -> all the TypeScript shapes (poster.ts, rag.ts, design.ts)
+supabase/migrations/       -> the SQL that builds the database.
+scripts/                   -> helper scripts (run-migration, seed-and-verify).
+
+
+================================================================================
+ 3. THE FULL FLOW (what happens when a user clicks "Generate") — 360°
+================================================================================
+USER (browser)                         SERVER (Next.js API)            EXTERNAL
+--------------                         --------------------            --------
+1) Fills the form:
+   prompt, category, style,
+   brand (logo/text), etc.
+        |
+        |  POST /api/generate (JSON)
+        v
+                                   2) orchestrator.generatePoster():
+                                      a) extractIntent(prompt)  -----> OpenAI gpt-4o-mini
+                                         => {category, style, tone,
+                                             primaryText, ctaText,
+                                             keywords, fonts, colors}
+                                      b) build a RAG query from intent
+                                      c) searchDesignTemplates(query):
+                                         - embed the query  ---------> OpenAI embeddings
+                                         - vector search    ---------> Supabase pgvector
+                                         => top matching design templates
+                                      d) buildImageQuery(intent)
+                                         searchPosterImage()  --------> Pexels API
+                                         proxy + optimize     --------> Cloudinary
+                                         => a real background photo URL
+                                      e) planLayout(intent, templates,
+                                         tokens, heroImage)  ---------> OpenAI gpt-4o
+                                         => PosterLayout JSON (the design):
+                                            background(image)+scrim+brand+
+                                            headline+blocks+CTA pill+accents
+                                      f) protectHeroImage() safety net
+                                      g) make 2 color variations (no AI, pure code)
+        ^                             h) return GeneratedPoster (JSON)
+        |  (JSON response)
+3) Browser receives the layout
+4) PosterCanvas draws it on a
+   <canvas> with Konva:
+   - loadFontsForCanvas() --------------------------------------------> Google + Fontshare
+   - draws photo, scrim, text, CTA
+5) User can export:
+   POST /api/export  ----------------> upload PNG -------------------> Cloudinary
+                                       (and save record in Supabase)
+
+KEY POINT: Steps a, c, e use OpenAI for TEXT thinking only. Step 4 (the actual
+picture) is drawn by OUR code on the canvas — no AI image generation, no per-image cost.
+
+
+================================================================================
+ 4. THE DESIGN SYSTEM (how we get "designer-quality" without AI drawing)
+================================================================================
+A poster = a stack of LAYERS (back to front):
+    background (solid / gradient / PHOTO)
+    -> scrim (a semi-transparent dark panel so text is readable on the photo)
+    -> brand mark (logo image or company text)
+    -> headline (big), subheadline, detail blocks (price, features)
+    -> CTA "pill" (rounded rectangle + label)
+    -> decorative accents (thin line, dot grid)
+
+We guide the AI with a "DESIGN GRAMMAR" (rules of good posters), encoded in:
+  - DESIGN TOKENS (lib/design-system/tokens.ts): for each (category + style) we
+    predefine the right FONT PAIR, COLOR PALETTE, SPACING, and COMPOSITION RULES.
+    Example: realestate + luxury => Playfair Display + Cormorant, navy+gold palette,
+    airy spacing, "full-bleed photo + scrim + price block + refined CTA".
+  - The LAYOUT PLANNER PROMPT (lib/ai/layout-planner.ts) teaches gpt-4o the grammar:
+    always use a scrim over photos, real hierarchy, structured blocks, a clear CTA,
+    tasteful accents, safe margins — and explicitly AVOID the "cheap/generic" look.
+
+Because the output is STRUCTURED DATA, the user can later edit any layer (move text,
+change color) — impossible with a flat AI-generated image.
+
+
+================================================================================
+ 5. RAG — WHAT IT IS (simple), then HOW WE BUILT IT (technical)
+================================================================================
+WHAT IS RAG? (Retrieval-Augmented Generation)
+  Plain English: before asking the AI to do a task, we first RETRIEVE relevant
+  "reference knowledge" from our own database and hand it to the AI as context.
+  The AI then GENERATES a better answer because it has good examples to follow.
+
+  Analogy: a junior designer (the AI) is much better when you first hand them
+  3 example posters that match the brief. RAG = automatically finding those
+  3 best examples from a library and giving them to the AI every time.
+
+THE CORE TRICK: EMBEDDINGS + VECTOR SEARCH
+  - An "embedding" is a list of numbers (a vector) that represents the MEANING of
+    text. Similar meanings -> similar vectors. (We use 1536 numbers per text.)
+  - We store an embedding for every design template in our library.
+  - At request time we embed the user's need, then find the templates whose vectors
+    are CLOSEST (cosine similarity) — i.e., the most semantically relevant designs.
+
+HOW WE IMPLEMENTED IT (the actual pipeline in this repo):
+
+  (A) BUILD THE KNOWLEDGE BASE (one-time "seeding")
+      - We hand-authored design templates (lib/templates/*.ts). Each has metadata:
+        headline position, CTA position, font pair, palette, spacing, composition
+        notes, design rules, and an "embeddingText" describing it.
+      - seeder.ts: takes each template's embeddingText -> generateEmbeddingsBatch()
+        -> OpenAI text-embedding-3-small -> a 1536-dim vector -> stored in Supabase
+        table `design_templates` (column `embedding vector(1536)`).
+      - Trigger once via:  POST /api/seed  (protected by SEED_SECRET).
+
+  (B) RETRIEVE AT GENERATION TIME
+      - retriever.ts -> searchDesignTemplates(queryText):
+          1. generateEmbedding(queryText)  (OpenAI) -> query vector
+          2. call Supabase RPC `search_design_templates(query_embedding, threshold, count)`
+             which runs:  1 - (embedding <=> query_embedding)  (cosine similarity)
+             using the pgvector operator `<=>`, ordered by closeness.
+          3. returns the top matches; we post-filter by category and keep top-k.
+      - formatTemplatesForAI() turns those matches into a short text block that is
+        injected into the layout-planner prompt ("here are pro layouts to follow").
+
+  (C) THE DATABASE OBJECTS (supabase/migrations/001_init.sql)
+      - extension `vector` (pgvector) enabled.
+      - table `design_templates` (id, template_id, industry, style, layout_type,
+        metadata jsonb, embedding vector(1536)).
+      - an IVFFlat index for fast vector search.
+      - function `search_design_templates(...)` = the similarity query above.
+      - table `posters` to save generated results.
+      - Row Level Security (RLS) + grants so only the server key can write.
+
+  (D) THE ROLE OF VISION IN RAG (this is the future "training")
+      - image-analyzer.ts uses OpenAI gpt-4o VISION to look at a REAL reference
+        poster and extract its design DNA (colors, composition, type feel...).
+      - PLANNED (Phase 4): run many great reference posters through vision ->
+        produce template metadata -> embed -> store. This grows the knowledge base
+        so the engine learns to MIMIC professional references for each industry.
+      - This is the only place we "use OpenAI's eyes", and it is for LEARNING the
+        design library — still NOT for drawing the final poster.
+
+IMPORTANT REAL-WORLD NOTE WE LEARNED:
+  IVFFlat (the vector index) is designed for LARGE datasets. With only ~8 templates
+  it can return too few/no rows because it splits data into many near-empty buckets.
+  Mitigation: as we add more templates (Phase 4), retrieval quality rises; for tiny
+  data an exact scan (or HNSW index) is more reliable. (Documented for future tuning.)
+
+
+================================================================================
+ 6. WHICH APIS DO WHAT (quick reference)
+================================================================================
+  OpenAI   - embeddings (RAG), intent extraction, layout planning, vision analysis.
+             (TEXT + VISION only. NEVER image generation.)
+  Supabase - Postgres + pgvector: stores templates/embeddings + does vector search;
+             also stores generated posters.
+  Pexels   - free background photos relevant to the prompt.
+  Cloudinary - optimizes/proxies Pexels photos (CORS-safe for canvas) and hosts the
+             final exported poster PNG.
+  Google Fonts / Fontshare - premium web fonts for the canvas text.
+
+
+================================================================================
+ 7. PROGRESS SO FAR (DONE) ✅
+================================================================================
+  - Full environment + credentials wired (OpenAI, Supabase, Cloudinary, Pexels).
+  - Supabase set up: pgvector enabled, tables/indexes/function created, RLS + grants,
+    8 starter templates seeded and verified; RAG retrieval working end-to-end.
+  - Fixed real bugs: frontend was reading the wrong field (no poster showed);
+    react-konva vs React 19 mismatch (canvas crashed); stale .next cache.
+  - Switched image analysis from Anthropic to OpenAI (single-provider, cost-aware).
+  - Phase 1: added REAL-ESTATE and RESTAURANT categories (types, DB constraint,
+    palettes, design tokens, intent + planner support).
+  - Phase 2: Pexels image fetching + Cloudinary proxy (verified images load).
+  - Phase 3: rewrote the layout planner into a "graphic-designer" prompt that
+    builds image-background, scrim, structured blocks, CTA pills, accents.
+  - Premium fonts: Switzer (Fontshare) + Syne/Outfit/Oswald/Inter (Google) added,
+    font-loader now loads both sources.
+  - Client branding input: upload a logo (SVG/PNG) OR type a company name -> placed
+    as the brand mark.
+  - Curated, category-aware ready-made prompts so users never face a blank page.
+  - Safety net so a photo is never fully hidden by an opaque panel.
+  Result: real-estate & restaurant prompts now produce structured, photo-backed,
+  premium-looking posters (8-10 layers) instead of a single line of text.
+
+
+================================================================================
+ 8. PROGRESS TO REACH (ROADMAP) 🎯
+================================================================================
+  PHASE 4 (next): "Teach-by-reference" ingestion pipeline.
+     - Feed many professional reference posters (per industry) through gpt-4o vision
+       -> extract design DNA -> embed -> store as templates. This is the real
+       "training" that makes output mimic the references you shared.
+  PHASE 5: Wire USER-supplied reference images into the planner (mimic a client's
+     specific reference on demand).
+  Other improvements:
+     - More templates per category; better image-query relevance per industry.
+     - Multiple aspect ratios fully supported (1:1, 4:5, 9:16).
+     - Smarter image cropping/positioning (true "cover" fit, focal point).
+     - In-canvas editing UX (drag/resize/recolor layers).
+     - Export polish, brand kits (saved palettes/logos/fonts per client).
+     - Switch the vector index to HNSW or tune IVFFlat as the library grows.
+     - Caching + rate limiting to control API cost.
+
+
+================================================================================
+ 9. LEARNING PATH (what to study, in order, to contribute confidently)
+================================================================================
+  Start here (fundamentals):
+   1. JavaScript/TypeScript basics -> then React (components, props, state, hooks).
+      Learn: react.dev (official tutorial).
+   2. Next.js App Router: server vs client components, API routes (route.ts).
+      Learn: nextjs.org/learn.
+
+  The AI / RAG core (the heart of this project):
+   3. "What are embeddings?" + "What is a vector database?"
+      Learn: OpenAI docs (Embeddings guide); Supabase pgvector docs.
+   4. Cosine similarity / vector search (the math is simple: closeness of vectors).
+   5. RAG (Retrieval-Augmented Generation) concept.
+      Learn: search "RAG explained" (Pinecone/Supabase/OpenAI blogs are good).
+   6. Prompt engineering for STRUCTURED OUTPUT (asking an LLM to return strict JSON).
+      Learn: OpenAI "JSON mode / structured outputs" docs.
+
+  The rendering side:
+   7. HTML5 Canvas basics -> Konva.js -> react-konva.
+      Learn: konvajs.org docs.
+   8. Design systems & design tokens (why tokens.ts/colors.ts/typography.ts exist).
+
+  The data side:
+   9. Postgres basics + Supabase (tables, SQL, Row Level Security).
+      Learn: supabase.com/docs.
+
+  Tip: To SEE our RAG working, read these 3 files together in order:
+       lib/rag/seeder.ts  ->  lib/rag/embedder.ts  ->  lib/rag/retriever.ts
+       and the SQL in supabase/migrations/001_init.sql.
+
+
+================================================================================
+ 10. KNOWN LIMITATIONS + MITIGATIONS (be honest with stakeholders)
+================================================================================
+  LIMITATION                              MITIGATION
+  ----------------------------------      ---------------------------------------
+  LLM layout isn't 100% consistent        Strong prompt grammar + code safety nets
+   (occasional odd spacing).               (e.g. scrim clamp); more templates (RAG).
+  Tiny template library right now         Phase 4 reference-ingestion grows it.
+   (weak RAG for new categories).
+  IVFFlat index needs enough data.        Add data; or use exact scan / HNSW.
+  Stock photo may not perfectly match     Better per-industry queries; allow user
+   the exact property/dish.                to pick/replace the image (future).
+  OpenAI text calls still cost money.     Cheap models (gpt-4o-mini) for intent;
+                                           caching; no image-generation cost at all.
+  Fonts/photos load from external CDNs.   Cloudinary proxy + graceful fallbacks so
+                                           rendering never blocks on a CDN hiccup.
+
+================================================================================
+ END OF project.txt
+================================================================================

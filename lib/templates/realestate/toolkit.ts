@@ -1,0 +1,102 @@
+import { v4 as uuidv4 } from 'uuid';
+import type {
+  PosterLayout, Layer, BackgroundLayer, TextLayer, ShapeLayer, PosterStyle,
+} from '@/types/poster';
+
+/**
+ * Shared toolkit for real-estate archetypes.
+ *
+ * The important part for clean layouts: TEXT AUTO-FITS and we flow elements with
+ * a running Y cursor, so a long headline can never overlap the blocks below it.
+ * Build archetypes from these helpers — see GUIDE.md.
+ */
+
+export const W = 1080;
+export const H = 1350;
+
+// ── Text measurement (estimate — no canvas needed) ───────────────
+// Average glyph width as a fraction of font size (serif a bit narrower).
+function avgCharW(fontSize: number, serif: boolean) {
+  return fontSize * (serif ? 0.5 : 0.56);
+}
+export function estLines(text: string, fontSize: number, maxWidth: number, serif = false): number {
+  if (!text) return 0;
+  const cpl = Math.max(1, Math.floor(maxWidth / avgCharW(fontSize, serif)));
+  // rough word-wrap: count by characters but never split below 1 line per word-run
+  return Math.max(1, Math.ceil(text.length / cpl));
+}
+/** Shrink a font size until the text fits within `maxLines`. */
+export function fitFontSize(
+  text: string, maxWidth: number, base: number, min: number, maxLines: number, serif = false
+): number {
+  let size = base;
+  while (size > min && estLines(text, size, maxWidth, serif) > maxLines) size -= 2;
+  return size;
+}
+/** Estimated rendered height of a text block. */
+export function textHeight(
+  text: string, fontSize: number, maxWidth: number, lineHeight = 1.06, serif = false
+): number {
+  return estLines(text, fontSize, maxWidth, serif) * fontSize * lineHeight;
+}
+
+// ── Layer factories ──────────────────────────────────────────────
+export function T(o: Partial<TextLayer> & { text: string; x: number; y: number; fontSize: number }): TextLayer {
+  return {
+    id: uuidv4(), type: 'text', name: o.role ?? 'text',
+    fontFamily: 'Switzer', color: '#FFFFFF', align: 'left', ...o,
+  } as TextLayer;
+}
+export function R(o: Partial<ShapeLayer> & { x: number; y: number; width: number; height: number }): ShapeLayer {
+  return { id: uuidv4(), type: 'shape', shapeType: 'rect', name: 'shape', ...o } as ShapeLayer;
+}
+export function photoBg(url?: string | null): BackgroundLayer {
+  if (url) {
+    return { id: uuidv4(), type: 'background', name: 'Hero Photo', fillType: 'image', imageUrl: url, x: 0, y: 0, width: W, height: H } as BackgroundLayer;
+  }
+  return {
+    id: uuidv4(), type: 'background', name: 'Background', fillType: 'gradient', x: 0, y: 0, width: W, height: H,
+    gradient: { type: 'linear', angle: 160, stops: [{ color: '#16344F', stop: 0 }, { color: '#0A1B2E', stop: 1 }] },
+  } as BackgroundLayer;
+}
+/** Semi-transparent panel/scrim for legibility. */
+export function scrim(x: number, y: number, w: number, h: number, fill = '#06101C', opacity = 0.6, cornerRadius = 0): ShapeLayer {
+  return R({ x, y, width: w, height: h, fill, opacity, cornerRadius });
+}
+/** CTA pill = rounded rect + centered label. */
+export function ctaPill(x: number, y: number, w: number, label: string, fill: string, textColor: string, align: 'left' | 'center' = 'center'): Layer[] {
+  return [
+    R({ x, y, width: w, height: 82, fill, cornerRadius: 41 }),
+    T({ text: label, x, y: y + 25, width: w, fontSize: 28, fontWeight: '700', color: textColor, align, role: 'cta' }),
+  ];
+}
+/** Info block: small accent line + label + value. Returns [layers, heightUsed]. */
+export function infoBlock(
+  x: number, y: number, label: string, value: string,
+  accent: string, labelColor: string, valueColor: string, w = 500
+): Layer[] {
+  return [
+    R({ x, y, width: 5, height: 68, fill: accent, cornerRadius: 2 }),
+    T({ text: label.toUpperCase(), x: x + 22, y, fontSize: 18, fontWeight: '600', color: labelColor, letterSpacing: 3, width: w - 22, role: 'label' }),
+    T({ text: value, x: x + 22, y: y + 28, fontSize: 32, fontWeight: '700', color: valueColor, lineHeight: 1.05, width: w - 22, role: 'body' }),
+  ];
+}
+
+export function frame(
+  layers: Layer[],
+  archetype: string,
+  style: PosterStyle = 'luxury',
+  palette?: string[],
+  fonts: string[] = ['Playfair Display', 'Switzer'],
+): PosterLayout {
+  return {
+    id: `poster-${archetype}-${uuidv4().slice(0, 6)}`,
+    version: '1.0',
+    dimensions: { width: W, height: H },
+    category: 'realestate',
+    style,
+    palette: palette ?? ['#0E2A47', '#3E7CA8', '#C8A85A', '#F5F8FB', '#FFFFFF'],
+    fonts,
+    layers,
+  };
+}

@@ -1,0 +1,196 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Design tokens ─────────────────────────────────────────────── */
+:root {
+  --background: #080808;
+  --foreground: #f0f0f0;
+  --surface: #111111;
+  --surface-raised: #1a1a1a;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.20);
+  --accent: #6366f1;
+  --accent-hover: #818cf8;
+  --accent-muted: rgba(99, 102, 241, 0.15);
+  --muted: rgba(255, 255, 255, 0.40);
+  --subtle: rgba(255, 255, 255, 0.15);
+}
+
+/* ─── Base ──────────────────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans, system-ui, sans-serif);
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+/* ─── Custom scrollbars ─────────────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.12) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.12);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.24);
+}
+
+/* ─── Focus visible ─────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ─── Selection ─────────────────────────────────────────────────── */
+::selection {
+  background: var(--accent-muted);
+  color: white;
+}
+
+/* ─── Utility classes ───────────────────────────────────────────── */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .glass {
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .glow-indigo {
+    box-shadow: 0 0 60px rgba(99, 102, 241, 0.25);
+  }
+
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ─── Sunset gradient (shared bg for create / gallery / insights) ── */
+.bg-sunset {
+  background: radial-gradient(125% 125% at 50% 101%,
+    rgba(245,87,2,1) 10.5%, rgba(245,120,2,1) 16%, rgba(245,140,2,1) 17.5%,
+    rgba(245,170,100,1) 25%, rgba(238,174,202,1) 40%, rgba(202,179,214,1) 65%,
+    rgba(148,201,233,1) 100%);
+}
+
+/* ─── Animated sunset gradient (splash) ───────────────────────────── */
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.bg-sunset-animated {
+  background: linear-gradient(125deg,
+    rgba(245,87,2,1), rgba(245,140,2,1), rgba(245,170,100,1),
+    rgba(238,174,202,1), rgba(202,179,214,1), rgba(148,201,233,1),
+    rgba(202,179,214,1), rgba(245,140,2,1));
+  background-size: 320% 320%;
+  animation: gradientShift 16s ease-in-out infinite;
+}
+
+/* ─── Loader animations ─────────────────────────────────────────── */
+@keyframes drawStroke {
+  0%   { stroke-dashoffset: var(--path-length); animation-timing-function: ease-in-out; }
+  50%  { stroke-dashoffset: 0; animation-timing-function: ease-in-out; }
+  100% { stroke-dashoffset: calc(var(--path-length) * -1); }
+}
+
+@keyframes textShimmer {
+  0%   { background-position: -100% center; }
+  100% { background-position: 100% center; }
+}
+
+.shimmer-text {
+  background-image: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.45) 0%,
+    rgba(255,255,255,0.45) 40%,
+    rgba(255,255,255,1) 50%,
+    rgba(255,255,255,0.45) 60%,
+    rgba(255,255,255,0.45) 100%
+  );
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: textShimmer 2s ease-in-out infinite;
+}
+
+/* ─── Konva canvas cursor ───────────────────────────────────────── */
+canvas {
+  outline: none;
+}
+
+/* ─── Range input ───────────────────────────────────────────────── */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.1);
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 0 0 2px rgba(99,102,241,0.3);
+}
+
+/* ─── Select ────────────────────────────────────────────────────── */
+select option {
+  background: #1a1a1a;
+  color: white;
+}
+
+/* ─── Framer Motion layout animations ──────────────────────────── */
+.motion-safe-transform {
+  transform: translateZ(0);
+  will-change: transform;
+}
