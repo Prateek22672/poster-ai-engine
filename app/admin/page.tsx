@@ -4,9 +4,14 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   ShieldCheck, RefreshCw, LogOut, KeyRound, Plus, Copy, Check,
-  CircleCheck, CircleX, Activity, DollarSign, Radio,
+  CircleCheck, CircleX, Activity, DollarSign, Radio, Layers, Lock,
 } from 'lucide-react';
 import { DotsLoading } from '@/components/ui/loader';
+
+// Frosted pill — identical language to the main app header (DashboardNav).
+const PILL =
+  'bg-ink backdrop-blur-xl border border-white/15 ' +
+  'shadow-[0_1px_0_0_rgba(255,255,255,0.08)_inset,0_6px_20px_rgba(0,0,0,0.35)]';
 
 interface HealthCheck { name: string; ok: boolean; detail: string }
 interface ServiceKey { id: string; name: string; prefix: string; active: boolean; allowed_ips: string | null; created_at: string; last_used_at: string | null }
@@ -84,25 +89,43 @@ export default function AdminPage() {
   if (!authed) {
     return (
       <Centered>
-        <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-ink p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <ShieldCheck className="w-5 h-5 text-indigo-400" />
-            <h1 className="text-lg font-bold text-white">Admin Access</h1>
+        <div className="w-full max-w-sm">
+          {/* Brand mark */}
+          <div className="flex flex-col items-center mb-7">
+            <div className="w-14 h-14 rounded-2xl bg-black flex items-center justify-center shadow-[0_12px_30px_rgba(0,0,0,0.5)]">
+              <ShieldCheck className="w-7 h-7 text-white" />
+            </div>
+            <h1 className="mt-4 text-2xl font-bold text-white tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.4)]">PosterAI Admin</h1>
+            <p className="text-[13px] text-white/55 mt-1 drop-shadow-[0_1px_6px_rgba(0,0,0,0.35)]">Engine control &amp; service monitoring</p>
           </div>
-          <input
-            type="password" value={password} autoFocus
-            onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && login()}
-            placeholder="Admin password"
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-          />
-          {loginError && <p className="text-xs text-red-400 mt-2">{loginError}</p>}
-          <button
-            onClick={login} disabled={busy}
-            className="mt-4 w-full py-2.5 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-semibold disabled:opacity-50"
-          >
-            {busy ? 'Signing in…' : 'Sign in'}
-          </button>
+
+          {/* Card — solid dark black */}
+          <div className="rounded-3xl bg-black/95 backdrop-blur-xl p-6 shadow-[0_24px_60px_rgba(0,0,0,0.55)]">
+            <label className="block text-xs font-semibold text-white/55 mb-2">Admin password</label>
+            <input
+              type="password" value={password} autoFocus
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && login()}
+              placeholder="••••••••••"
+              className="w-full bg-white/[0.06] rounded-xl px-3.5 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none focus:ring-2 focus:ring-white/20 transition"
+            />
+            {loginError && <p className="text-xs text-rose-400 mt-2.5 flex items-center gap-1"><CircleX className="w-3.5 h-3.5" /> {loginError}</p>}
+            <button
+              onClick={login} disabled={busy}
+              className="mt-4 w-full py-3 rounded-xl bg-white hover:bg-white/90 text-ink text-sm font-bold disabled:opacity-50 transition shadow-[0_10px_28px_rgba(0,0,0,0.4)]"
+            >
+              {busy ? 'Signing in…' : 'Sign in'}
+            </button>
+          </div>
+
+          {/* Trust badges */}
+          <div className="flex items-center justify-center gap-2 mt-5 flex-wrap">
+            <TrustTag icon={<Lock className="w-3 h-3" />} label="TLS encrypted" />
+            <TrustTag icon={<ShieldCheck className="w-3 h-3" />} label="HMAC-signed API" />
+          </div>
+          <p className="text-center text-[11px] text-white/40 mt-3 drop-shadow-[0_1px_6px_rgba(0,0,0,0.3)]">
+            Protected area · authorized personnel only
+          </p>
         </div>
       </Centered>
     );
@@ -112,25 +135,34 @@ export default function AdminPage() {
   return (
     <div className="min-h-dvh relative">
       <div className="pointer-events-none fixed inset-0 -z-10 bg-sunset" />
-      <header className="sticky top-0 z-10 flex items-center justify-between px-6 h-14 border-b border-white/10 bg-ink backdrop-blur">
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="w-5 h-5 text-indigo-400" />
-          <span className="font-bold text-white text-sm">Service Admin</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link href="/admin/service" className="flex items-center gap-1.5 text-xs text-white/60 hover:text-white bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg">
-            <Radio className="w-3.5 h-3.5" /> Service
-          </Link>
-          <button onClick={loadAll} className="flex items-center gap-1.5 text-xs text-white/60 hover:text-white bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg">
-            <RefreshCw className="w-3.5 h-3.5" /> Refresh
-          </button>
-          <button onClick={logout} className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white">
-            <LogOut className="w-3.5 h-3.5" /> Logout
-          </button>
-        </div>
-      </header>
+      <div className="sticky top-0 z-50 flex items-center justify-between px-4 sm:px-5 pt-3 pb-2">
+        {/* Logo pill — back to the app */}
+        <Link href="/create" className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors hover:bg-ink ${PILL}`}>
+          <div className="w-5 h-5 rounded-md bg-white/10 flex items-center justify-center">
+            <Layers className="w-3 h-3 text-white" />
+          </div>
+          <span className="text-[13px] font-semibold text-white tracking-tight leading-none">PosterAI</span>
+          <span className="text-white/25 text-[13px] leading-none">/</span>
+          <span className="text-[13px] font-semibold text-indigo-300 tracking-tight leading-none flex items-center gap-1">
+            <ShieldCheck className="w-3.5 h-3.5" /> Admin
+          </span>
+        </Link>
 
-      <main className="max-w-4xl mx-auto px-6 py-8 space-y-6">
+        {/* Action pills */}
+        <div className="flex items-center gap-1.5">
+          <Link href="/admin/service" className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] text-white/65 hover:text-white transition-colors hover:bg-ink ${PILL}`}>
+            <Radio className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Service</span>
+          </Link>
+          <button onClick={loadAll} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] text-white/65 hover:text-white transition-colors hover:bg-ink ${PILL}`}>
+            <RefreshCw className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Refresh</span>
+          </button>
+          <button onClick={logout} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] text-white/65 hover:text-white transition-colors hover:bg-ink ${PILL}`}>
+            <LogOut className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Logout</span>
+          </button>
+        </div>
+      </div>
+
+      <main className="max-w-4xl mx-auto px-6 py-6 space-y-6">
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Stat icon={<Activity className="w-4 h-4" />} label="Total calls" value={String(stats?.totals.calls ?? 0)} />
@@ -239,6 +271,13 @@ Content-Type: application/json
   );
 }
 
+function TrustTag({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-medium text-white/80">
+      {icon}{label}
+    </span>
+  );
+}
 function Centered({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-dvh relative flex items-center justify-center p-6">
@@ -249,7 +288,7 @@ function Centered({ children }: { children: React.ReactNode }) {
 }
 function Stat({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: string; accent?: boolean }) {
   return (
-    <div className={`rounded-xl border p-4 backdrop-blur-xl ${accent ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-ink border-white/10'}`}>
+    <div className={`rounded-xl border p-4 ${accent ? 'bg-ink border-emerald-500/30' : 'bg-ink border-white/10'}`}>
       <div className="flex items-center gap-1.5 text-white/40 text-xs">{icon}{label}</div>
       <div className={`text-xl font-bold mt-1.5 ${accent ? 'text-emerald-400' : 'text-white'}`}>{value}</div>
     </div>

@@ -198,7 +198,7 @@ export default function InsightsPage() {
 
 function Card({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: string; accent?: boolean }) {
   return (
-    <div className={`rounded-xl border p-4 backdrop-blur-xl ${accent ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-ink border-white/10'}`}>
+    <div className={`rounded-xl border p-4 ${accent ? 'bg-ink border-emerald-500/30' : 'bg-ink border-white/10'}`}>
       <div className="flex items-center gap-1.5 text-white/40 text-xs">{icon}{label}</div>
       <div className={`text-2xl font-bold mt-1.5 ${accent ? 'text-emerald-400' : 'text-white'}`}>{value}</div>
     </div>

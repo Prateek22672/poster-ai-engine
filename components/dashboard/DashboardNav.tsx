@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Sparkles, LayoutGrid, Settings, Layers, BarChart3 } from 'lucide-react';
+import { Sparkles, LayoutGrid, ShieldCheck, Layers, BarChart3, Eye } from 'lucide-react';
 
 const NAV_ITEMS = [
   { href: '/create', label: 'Create', icon: Sparkles },
   { href: '/gallery', label: 'Gallery', icon: LayoutGrid },
+  { href: '/preview', label: 'Preview', icon: Eye },
   { href: '/insights', label: 'Insights', icon: BarChart3 },
 ];
 
@@ -53,18 +54,16 @@ export function DashboardNav() {
         })}
       </nav>
 
-      {/* Right pills */}
+      {/* Right pill — Admin */}
       <div className="pointer-events-auto flex items-center gap-1.5">
         <Link
-          href="/api/seed"
-          className={`hidden sm:block px-3 py-1.5 rounded-full text-[12px] text-white/55 hover:text-white transition-colors hover:bg-ink ${PILL}`}
-          title="Seed design templates (dev only)"
+          href="/admin"
+          title="Open admin panel"
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-medium text-white/70 hover:text-white transition-colors hover:bg-ink ${PILL}`}
         >
-          Seed DB
+          <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
+          <span className="hidden sm:inline">Admin</span>
         </Link>
-        <button className={`p-1.5 rounded-full text-white/55 hover:text-white transition-colors hover:bg-ink ${PILL}`}>
-          <Settings className="w-3.5 h-3.5" />
-        </button>
       </div>
     </div>
   );
