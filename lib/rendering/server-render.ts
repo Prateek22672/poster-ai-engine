@@ -1,4 +1,5 @@
-import { createCanvas, loadImage, type SKRSContext2D } from '@napi-rs/canvas';
+import { createCanvas, loadImage, GlobalFonts, type SKRSContext2D } from '@napi-rs/canvas';
+import { join } from 'node:path';
 import type { PosterLayout, Layer, BackgroundLayer, TextLayer, ShapeLayer, ImageLayer } from '@/types/poster';
 
 /**
@@ -6,15 +7,37 @@ import type { PosterLayout, Layer, BackgroundLayer, TextLayer, ShapeLayer, Image
  * @napi-rs/canvas. This is what lets the /api/v1 service return an image without
  * a browser. It mirrors the client Konva renderer closely.
  *
- * NOTE on fonts: without the exact font files registered, the OS fallback is used
- * (serif fallback for Playfair/Cormorant, sans otherwise). Bundle the real .ttf
- * files + GlobalFonts.registerFromPath for pixel-perfect text (follow-up).
+ * FONTS: serverless runtimes (Vercel) ship NO system fonts, so fillText draws
+ * nothing — invisible text. We bundle the real .ttf files (lib/rendering/fonts)
+ * and register them once with GlobalFonts before any draw. "Switzer" (a paid
+ * font we don't ship) is aliased to Inter so existing layouts resolve.
  */
 
+// ── font registration (runs once at module load) ────────────────
+const FONT_DIR = join(process.cwd(), 'lib', 'rendering', 'fonts');
+let fontsReady = false;
+function ensureFonts(): void {
+  if (fontsReady) return;
+  fontsReady = true;
+  const reg = (file: string, family: string) => {
+    try {
+      if (!GlobalFonts.has(family)) GlobalFonts.registerFromPath(join(FONT_DIR, file), family);
+    } catch (e) {
+      console.error(`[server-render] font register failed (${family}):`, e instanceof Error ? e.message : e);
+    }
+  };
+  reg('PlayfairDisplay.ttf', 'Playfair Display');
+  reg('Syne.ttf', 'Syne');
+  reg('Oswald.ttf', 'Oswald');
+  reg('CormorantGaramond.ttf', 'Cormorant Garamond');
+  reg('Inter.ttf', 'Inter');
+  reg('Inter.ttf', 'Switzer'); // alias: we don't ship the paid Switzer font
+}
+
 function fontStack(family?: string): string {
-  const f = family ?? 'sans-serif';
+  const f = family ?? 'Inter';
   const serif = /playfair|cormorant|garamond/i.test(f);
-  return `"${f}", ${serif ? 'Georgia, serif' : 'Arial, sans-serif'}`;
+  return `"${f}", ${serif ? 'Georgia, serif' : 'Inter, Arial, sans-serif'}`;
 }
 
 async function fetchImage(url: string) {
@@ -169,6 +192,7 @@ async function drawImageLayer(ctx: SKRSContext2D, layer: ImageLayer) {
 
 /** Render a layout to a PNG buffer (server-side, no browser). */
 export async function renderLayoutToPng(layout: PosterLayout): Promise<Buffer> {
+  ensureFonts();
   const W = layout.dimensions.width;
   const H = layout.dimensions.height;
   const canvas = createCanvas(W, H);
