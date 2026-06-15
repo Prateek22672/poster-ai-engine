@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import {
   ShieldCheck, RefreshCw, LogOut, KeyRound, Plus, Copy, Check,
-  CircleCheck, CircleX, Activity, DollarSign,
+  CircleCheck, CircleX, Activity, DollarSign, Radio,
 } from 'lucide-react';
 import { DotsLoading } from '@/components/ui/loader';
 
@@ -117,6 +118,9 @@ export default function AdminPage() {
           <span className="font-bold text-white text-sm">Service Admin</span>
         </div>
         <div className="flex items-center gap-3">
+          <Link href="/admin/service" className="flex items-center gap-1.5 text-xs text-white/60 hover:text-white bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg">
+            <Radio className="w-3.5 h-3.5" /> Service
+          </Link>
           <button onClick={loadAll} className="flex items-center gap-1.5 text-xs text-white/60 hover:text-white bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg">
             <RefreshCw className="w-3.5 h-3.5" /> Refresh
           </button>

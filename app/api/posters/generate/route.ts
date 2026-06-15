@@ -4,7 +4,8 @@ import { verifyEngineRequest, signEngineResponse } from '@/lib/security/engine-h
 import { selectRealEstateLayouts, type RealEstateContent } from '@/lib/templates/realestate';
 import { renderLayoutToPng } from '@/lib/rendering/server-render';
 import { uploadPosterToCloudinary } from '@/lib/cloudinary/upload';
-import { checkDailyBudget } from '@/lib/security/guard';
+import { checkDailyBudget, getClientIp } from '@/lib/security/guard';
+import { isRealtorEnabled, logRealtorCall } from '@/lib/realtor/service';
 import type { Layer, PosterLayout } from '@/types/poster';
 
 export const maxDuration = 60;
@@ -55,16 +56,21 @@ function signed(obj: unknown, status: number, requestId?: string | null): NextRe
 
 // ── POST /api/posters/generate ───────────────────────────────────
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
   // Raw body for HMAC (must verify against the exact bytes)
   const raw = await req.text();
   const auth = verifyEngineRequest(req.headers, raw);
   if (!auth.ok) {
+    logRealtorCall({ status: 'unauthorized', error_code: auth.code, ip });
     const status = auth.code === 'ENGINE_NOT_CONFIGURED' ? 503 : 401;
     return signed({ status: 'error', error: { code: auth.code } }, status);
   }
 
   let body: Record<string, unknown>;
-  try { body = JSON.parse(raw); } catch { return signed({ status: 'error', error: { code: 'BAD_JSON' } }, 400); }
+  try { body = JSON.parse(raw); } catch {
+    logRealtorCall({ status: 'error', error_code: 'BAD_JSON', ip });
+    return signed({ status: 'error', error: { code: 'BAD_JSON' } }, 400);
+  }
 
   const requestId = (body.request_id as string) ?? null;
   const tenantId = (body.tenant_id as string) ?? 'default';
@@ -73,12 +79,22 @@ export async function POST(req: NextRequest) {
   const images = (body.images as unknown[]) ?? [];
   const logos = (body.logos as unknown[]) ?? [];
 
+  // Kill-switch — if turned off in /admin, Realtor falls back to GD
+  if (!(await isRealtorEnabled())) {
+    logRealtorCall({ status: 'disabled', request_id: requestId, tenant_id: tenantId, ip });
+    return signed({ status: 'error', error: { code: 'SERVICE_DISABLED' } }, 503, requestId);
+  }
+
   if (!Array.isArray(images) || images.length < 1 || images.length > 6) {
+    logRealtorCall({ status: 'error', error_code: 'INVALID_IMAGES', request_id: requestId, tenant_id: tenantId, images_count: Array.isArray(images) ? images.length : 0, ip });
     return signed({ status: 'error', error: { code: 'INVALID_IMAGES', message: '1–6 images required' } }, 400, requestId);
   }
 
   const budget = await checkDailyBudget();
-  if (!budget.ok) return signed({ status: 'error', error: { code: 'BUDGET_REACHED' } }, 429, requestId);
+  if (!budget.ok) {
+    logRealtorCall({ status: 'error', error_code: 'BUDGET_REACHED', request_id: requestId, tenant_id: tenantId, ip });
+    return signed({ status: 'error', error: { code: 'BUDGET_REACHED' } }, 429, requestId);
+  }
 
   const t0 = Date.now();
   const logs: Array<{ step: string; ms: number; note?: string }> = [];
@@ -112,6 +128,14 @@ export async function POST(req: NextRequest) {
       logs.push({ step: 'render+upload', ms: Date.now() - tR, note: d.label });
     }
 
+    logRealtorCall({
+      status: 'completed', request_id: requestId, tenant_id: tenantId,
+      posters_count: posters.length, images_count: images.length, logos_count: logos.length,
+      total_ms: Date.now() - t0,
+      property: { name: content.projectName, developer: content.developer ?? null, price: content.priceValue, config: content.configValue },
+      response: { posters: posters.map((p) => p.cloudinary_url), logs },
+      ip,
+    });
     return signed({
       status: 'completed',
       tenant_id: tenantId,
@@ -123,6 +147,8 @@ export async function POST(req: NextRequest) {
     }, 200, requestId);
   } catch (err) {
     console.error('[API/posters/generate] Error:', err);
-    return signed({ status: 'error', error: { code: 'ENGINE_ERROR', message: err instanceof Error ? err.message : 'failed' } }, 500, requestId);
+    const message = err instanceof Error ? err.message : 'failed';
+    logRealtorCall({ status: 'error', error_code: 'ENGINE_ERROR', request_id: requestId, tenant_id: tenantId, total_ms: Date.now() - t0, response: { error: message }, ip });
+    return signed({ status: 'error', error: { code: 'ENGINE_ERROR', message } }, 500, requestId);
   }
 }
