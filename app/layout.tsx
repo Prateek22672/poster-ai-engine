@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import { Splash } from '@/components/ui/Splash';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -23,8 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className="bg-ink text-white antialiased">
-        <Splash />
+      <body className="bg-neutral-950 text-white antialiased">
         {children}
       </body>
     </html>

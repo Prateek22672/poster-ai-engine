@@ -18,6 +18,11 @@ function fontStack(family?: string): string {
 }
 
 async function fetchImage(url: string) {
+  // base64 data URL (e.g. an agent-uploaded photo) — decode directly
+  if (url.startsWith('data:')) {
+    const b64 = url.slice(url.indexOf(',') + 1);
+    return loadImage(Buffer.from(b64, 'base64'));
+  }
   const res = await fetch(url);
   if (!res.ok) throw new Error(`image fetch ${res.status}`);
   const buf = Buffer.from(await res.arrayBuffer());

@@ -21,6 +21,14 @@ export async function GET(req: NextRequest) {
   // Engine (in-process)
   checks.push({ name: 'Design Engine', ok: true, detail: 'running' });
 
+  // Realtor integration (HMAC endpoint readiness)
+  const hasRealtor = !!process.env.POSTER_ENGINE_API_KEY && !!process.env.POSTER_ENGINE_HMAC_SECRET;
+  checks.push({
+    name: 'Realtor endpoint (/api/posters/generate)',
+    ok: hasRealtor,
+    detail: hasRealtor ? 'configured (HMAC ready)' : 'set POSTER_ENGINE_API_KEY + POSTER_ENGINE_HMAC_SECRET',
+  });
+
   // Supabase
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
