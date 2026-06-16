@@ -37,13 +37,18 @@ export function selectRealEstateLayout(c: RealEstateContent, url?: string | null
   return ARCHETYPES[hashIndex(c.projectName + c.tagline, ARCHETYPES.length)].build(c, url);
 }
 
-/** N DIFFERENT archetypes for the same content — the user picks one. */
+/**
+ * N DIFFERENT archetypes for the same content — the user picks one.
+ * `rotate` shifts the starting archetype so repeated generations of the same
+ * property don't always lead with the same design.
+ */
 export function selectRealEstateLayouts(
   c: RealEstateContent,
   url?: string | null,
-  count = 3
+  count = 3,
+  rotate = 0
 ): Array<{ label: string; layout: PosterLayout }> {
-  const start = hashIndex(c.projectName + c.tagline, ARCHETYPES.length);
+  const start = (hashIndex(c.projectName + c.tagline, ARCHETYPES.length) + rotate) % ARCHETYPES.length;
   const n = Math.min(count, ARCHETYPES.length);
   const out: Array<{ label: string; layout: PosterLayout }> = [];
   for (let i = 0; i < n; i++) {

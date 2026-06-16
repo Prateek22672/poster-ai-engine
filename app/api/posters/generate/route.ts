@@ -17,6 +17,13 @@ function pick(obj: Record<string, unknown> | undefined, ...keys: string[]): stri
   for (const k of keys) { const v = obj?.[k]; if (v != null && String(v).trim()) return String(v).trim(); }
   return '';
 }
+/** Trim to ≤max chars at a word boundary (adds … only if it actually cut). */
+function wordClamp(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const lastSpace = cut.lastIndexOf(' ');
+  return `${(lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
+}
 function toDataUrl(item: unknown, defaultMime: string): string | null {
   if (!item) return null;
   if (typeof item === 'string') return item.startsWith('data:') ? item : `data:${defaultMime};base64,${item}`;
@@ -26,18 +33,23 @@ function toDataUrl(item: unknown, defaultMime: string): string | null {
   return data.startsWith('data:') ? data : `data:${o.mime ?? defaultMime};base64,${data}`;
 }
 function buildContent(property: Record<string, unknown>, options: Record<string, unknown>): RealEstateContent {
-  const developer = pick(property, 'developer', 'company', 'builder', 'brand');
+  // Agent / developer / brokerage — the contact credited on the poster.
+  const developer = pick(property, 'developer', 'agent', 'company', 'builder', 'brand');
+  // Title can be a full descriptive phrase ("Luxury Beachfront Villa with
+  // Private Infinity Pool"); keep it (the layouts auto-wrap it), only trim at a
+  // word boundary if it's extreme — never mid-word.
+  const title = pick(property, 'name', 'project_name', 'title', 'project') || 'Premium Property';
   return {
-    projectName: (pick(property, 'name', 'project_name', 'title', 'project') || 'Project').slice(0, 26),
+    projectName: wordClamp(title, 54),
     developer: developer || undefined,
-    location: pick(property, 'location', 'city', 'area', 'sector') || undefined,
+    location: pick(property, 'location', 'address', 'city', 'area', 'sector') || undefined,
     tagline: pick(property, 'tagline', 'subtitle', 'headline') || 'Modern Elegance',
-    configLabel: 'Residences',
-    configValue: (pick(property, 'config', 'bhk', 'beds', 'type', 'configuration') || 'Premium Residences').slice(0, 38),
-    priceLabel: 'Starting From',
-    priceValue: (pick(property, 'price', 'starting_price', 'price_from') || 'Price on Request').slice(0, 22),
+    configLabel: 'Features',
+    configValue: (pick(property, 'config', 'features', 'bhk', 'beds', 'type', 'configuration') || 'Premium Residences').slice(0, 42),
+    priceLabel: 'Price',
+    priceValue: (pick(property, 'price', 'starting_price', 'price_from') || 'Price on Request').slice(0, 24),
     detailLabel: 'Possession & Plan',
-    detailValue: ([pick(property, 'possession', 'handover'), pick(property, 'payment_plan', 'payment')].filter(Boolean).join(' · ') || 'Enquire for details').slice(0, 38),
+    detailValue: ([pick(property, 'possession', 'handover'), pick(property, 'payment_plan', 'payment')].filter(Boolean).join(' · ') || 'Enquire for details').slice(0, 40),
     cta: (pick(options, 'cta') || pick(property, 'cta') || 'Enquire Now').slice(0, 20),
     brand: developer || undefined,
   };
@@ -106,7 +118,9 @@ export async function POST(req: NextRequest) {
 
     const content = buildContent(property, options);
     const count = Math.min(Math.max(Number(options.count) || 3, 1), 4);
-    const designs = selectRealEstateLayouts(content, heroDataUrl, count);
+    // Rotate the starting archetype each call so repeat generations vary.
+    const rotate = Math.floor(Math.random() * 4);
+    const designs = selectRealEstateLayouts(content, heroDataUrl, count, rotate);
 
     const posters: Array<Record<string, unknown>> = [];
     for (const d of designs) {

@@ -15,15 +15,34 @@ export const W = 1080;
 export const H = 1350;
 
 // ── Text measurement (estimate — no canvas needed) ───────────────
-// Average glyph width as a fraction of font size (serif a bit narrower).
+// Average glyph advance as a fraction of font size. Measured from the actual
+// bundled fonts (Playfair .518, Cormorant .476, Oswald .414, Syne .510,
+// Switzer .551) with a safety margin so we never UNDER-reserve space.
 function avgCharW(fontSize: number, serif: boolean) {
-  return fontSize * (serif ? 0.5 : 0.56);
+  return fontSize * (serif ? 0.53 : 0.57);
 }
+/**
+ * Lines a string takes — simulates WORD wrapping exactly like the renderer
+ * (a whole word that doesn't fit moves to the next line; long words aren't
+ * split). This is the bit that prevents headlines colliding with the blocks
+ * below them: char-based counting under-predicted lines for multi-word names.
+ */
 export function estLines(text: string, fontSize: number, maxWidth: number, serif = false): number {
   if (!text) return 0;
-  const cpl = Math.max(1, Math.floor(maxWidth / avgCharW(fontSize, serif)));
-  // rough word-wrap: count by characters but never split below 1 line per word-run
-  return Math.max(1, Math.ceil(text.length / cpl));
+  if (!maxWidth) return text.split('\n').length;
+  const cw = avgCharW(fontSize, serif);
+  let total = 0;
+  for (const para of text.split('\n')) {
+    let line = '';
+    let count = 0;
+    for (const word of para.split(' ')) {
+      const test = line ? `${line} ${word}` : word;
+      if (test.length * cw > maxWidth && line) { count++; line = word; }
+      else line = test;
+    }
+    total += count + 1; // + the last (or only) line
+  }
+  return Math.max(1, total);
 }
 /** Shrink a font size until the text fits within `maxLines`. */
 export function fitFontSize(
@@ -38,6 +57,17 @@ export function textHeight(
   text: string, fontSize: number, maxWidth: number, lineHeight = 1.06, serif = false
 ): number {
   return estLines(text, fontSize, maxWidth, serif) * fontSize * lineHeight;
+}
+/**
+ * Truncate to a single line (with an ellipsis) so long Realtor strings — agent
+ * names, phone numbers, full addresses dumped into one field — can never wrap
+ * and overlap the next element.
+ */
+export function clampOneLine(text: string, fontSize: number, maxWidth: number, serif = false): string {
+  if (!text) return text;
+  const maxChars = Math.max(4, Math.floor(maxWidth / avgCharW(fontSize, serif)));
+  if (text.length <= maxChars) return text;
+  return `${text.slice(0, maxChars - 1).trimEnd()}…`;
 }
 
 // ── Layer factories ──────────────────────────────────────────────
