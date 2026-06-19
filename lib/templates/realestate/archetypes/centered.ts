@@ -1,14 +1,15 @@
 import type { Layer, PosterLayout } from '@/types/poster';
 import type { RealEstateContent } from '../content';
 import { W, T, R, photoBg, scrim, ctaPill, fitFontSize, textHeight, clampOneLine, frame } from '../toolkit';
+import { getTheme, type ColorMap } from '../theme';
 
 // CENTERED — full-bleed photo with a soft scrim, everything centered.
-const GOLD = '#D8B26A', WHITE = '#FFFFFF';
-
 export const centeredLabel = 'Centered';
 
-export function buildCentered(c: RealEstateContent, url?: string | null): PosterLayout {
-  const L: Layer[] = [photoBg(url), scrim(0, 0, W, 1350, '#06101C', 0.42)];
+export function buildCentered(c: RealEstateContent, url?: string | null, _photos?: string[], theme?: ColorMap): PosterLayout {
+  const t = getTheme('centered', theme);
+  const GOLD = t.gold, WHITE = t.white;
+  const L: Layer[] = [photoBg(url), scrim(0, 0, W, 1350, t.scrim, 0.42)];
 
   let y = 150;
   if (c.location) { L.push(T({ text: clampOneLine(c.location.toUpperCase(), 22, W - 200, false), x: 0, y, fontSize: 22, fontWeight: '600', color: GOLD, letterSpacing: 6, width: W, align: 'center' })); y += 46; }
@@ -20,6 +21,7 @@ export function buildCentered(c: RealEstateContent, url?: string | null): Poster
   y = Math.max(360, 470 - nameLines / 2);
   L.push(T({ text: c.projectName, x: 80, y, fontSize: nameSize, fontFamily: 'Cormorant Garamond', fontWeight: '700', color: WHITE, lineHeight: 1.0, width: W - 160, align: 'center', role: 'headline' }));
   y += nameLines + 24;
+  
 
   L.push(T({ text: clampOneLine(c.tagline.toUpperCase(), 26, W - 160, false), x: 0, y, fontSize: 26, fontWeight: '600', color: GOLD, letterSpacing: 4, width: W, align: 'center' })); y += 56;
 
@@ -27,7 +29,7 @@ export function buildCentered(c: RealEstateContent, url?: string | null): Poster
   L.push(T({ text: clampOneLine(`${c.priceLabel.toUpperCase()}  ${c.priceValue}`, 30, 456, false), x: 0, y: y + 22, fontSize: 30, fontWeight: '700', color: WHITE, width: W, align: 'center' })); y += 100;
 
   L.push(T({ text: clampOneLine(`${c.configValue}   ·   ${c.detailValue}`, 24, W - 160, false), x: 0, y, fontSize: 24, fontWeight: '500', color: 'rgba(255,255,255,0.85)', width: W, align: 'center' }));
-  L.push(...ctaPill(W / 2 - 180, 1140, 360, c.cta, GOLD, '#1A1206'));
+  L.push(...ctaPill(W / 2 - 180, 1140, 360, c.cta, t.cta, t.ctaText));
 
-  return frame(L, 'centered', 'luxury', ['#06101C', GOLD, WHITE, '#888888', '#FFFFFF'], ['Cormorant Garamond', 'Switzer']);
+  return frame(L, 'centered', 'luxury', [t.scrim, GOLD, WHITE, '#888888', '#FFFFFF'], ['Cormorant Garamond', 'Switzer']);
 }

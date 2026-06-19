@@ -12,6 +12,8 @@ export interface RealEstateContent {
   detailLabel: string; detailValue: string;   // "Possession & Plan" / "Q1 2027 · 60/40"
   cta: string;           // "Enquire Now"
   brand?: string;        // agency, e.g. "REALTREE PROPERTIES"
+  caption?: string;      // experiential mood line, e.g. "Chic Rooftop Moments"
+  amenities?: string[];  // checklist items, e.g. ["Guest Room", "Swimming Pool"]
 }
 
 function firstMatch(text: string, re: RegExp, fallback = ''): string {

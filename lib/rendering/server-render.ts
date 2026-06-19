@@ -184,8 +184,14 @@ async function drawImageLayer(ctx: SKRSContext2D, layer: ImageLayer) {
     const w = layer.width ?? img.width;
     const h = layer.height ?? img.height;
     ctx.globalAlpha = layer.opacity ?? 1;
+    // Always clip to the box (rounded if asked) so cover-fit overflow can't
+    // bleed into neighbouring photos in a multi-image collage.
+    const r = layer.cornerRadius ?? 0;
+    const clip = layer.fit !== 'contain';
+    if (clip) { ctx.save(); roundRectPath(ctx, layer.x, layer.y, w, h, r); ctx.clip(); }
     if (layer.fit === 'contain') ctx.drawImage(img, layer.x, layer.y, w, h);
     else drawCover(ctx, img, layer.x, layer.y, w, h);
+    if (clip) ctx.restore();
     ctx.globalAlpha = 1;
   } catch { /* skip broken image */ }
 }

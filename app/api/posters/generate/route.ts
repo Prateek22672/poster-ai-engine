@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { verifyEngineRequest, signEngineResponse } from '@/lib/security/engine-hmac';
-import { selectRealEstateLayouts, type RealEstateContent } from '@/lib/templates/realestate';
+import { selectRealEstateLayouts, archetypeFromText, type RealEstateContent } from '@/lib/templates/realestate';
+import type { ColorMap } from '@/lib/templates/realestate/theme';
+import { paletteFromImage } from '@/lib/color/palette';
 import { renderLayoutToPng } from '@/lib/rendering/server-render';
 import { uploadPosterToCloudinary } from '@/lib/cloudinary/upload';
 import { checkDailyBudget, getClientIp } from '@/lib/security/guard';
 import { isRealtorEnabled, logRealtorCall } from '@/lib/realtor/service';
+import { persistUsage } from '@/lib/usage/log';
 import type { Layer, PosterLayout } from '@/types/poster';
 
 export const maxDuration = 60;
@@ -16,6 +19,15 @@ const W = 1080;
 function pick(obj: Record<string, unknown> | undefined, ...keys: string[]): string {
   for (const k of keys) { const v = obj?.[k]; if (v != null && String(v).trim()) return String(v).trim(); }
   return '';
+}
+/** Amenity checklist from property.amenities[] (or features/highlights split). */
+function amenitiesOf(property: Record<string, unknown>): string[] | undefined {
+  const raw = property.amenities ?? property.features ?? property.highlights;
+  let list: string[] = [];
+  if (Array.isArray(raw)) list = raw.map((x) => String(x).trim());
+  else if (typeof raw === 'string') list = raw.split(/[,;|]/).map((s) => s.trim());
+  list = list.filter(Boolean).map((s) => s.slice(0, 22)).slice(0, 6);
+  return list.length ? list : undefined;
 }
 /** Trim to ≤max chars at a word boundary (adds … only if it actually cut). */
 function wordClamp(text: string, max: number): string {
@@ -52,10 +64,33 @@ function buildContent(property: Record<string, unknown>, options: Record<string,
     detailValue: ([pick(property, 'possession', 'handover'), pick(property, 'payment_plan', 'payment')].filter(Boolean).join(' · ') || 'Enquire for details').slice(0, 40),
     cta: (pick(options, 'cta') || pick(property, 'cta') || 'Enquire Now').slice(0, 20),
     brand: developer || undefined,
+    caption: (pick(property, 'caption', 'highlight', 'experience') || '').slice(0, 40) || undefined,
+    amenities: amenitiesOf(property),
   };
 }
-function logoLayer(src: string): Layer {
-  return { id: uuidv4(), type: 'image', name: 'Company Logo', src, x: W - 256, y: 56, width: 200, height: 88, fit: 'contain' } as Layer;
+// The Realtor's "Visual Style" selector → a matching template + colour theme,
+// so what the client picks actually changes the output (was ignored before).
+const STYLE_PRESETS: Array<{ re: RegExp; prefer: string; accent?: string; dark?: string }> = [
+  { re: /cinematic|dusk|golden|moody|warm/, prefer: 'cinematic', accent: '#CBA85E' },
+  { re: /minimal|clean|contemporary|sophisticat/, prefer: 'centered', accent: '#C2A35A' },
+  { re: /black\s*(and|&)?\s*gold|opulent|grandeur|ultra\s*premium/, prefer: 'topband', accent: '#D4AF37', dark: '#0B0B0C' },
+  { re: /jewel|dramatic|emerald|sapphire|royal/, prefer: 'overlay', accent: '#C8A85A', dark: '#10131A' },
+];
+function resolveStyle(styleText: string): { prefer?: string; theme?: ColorMap; matched?: string } {
+  const s = (styleText || '').toLowerCase();
+  if (!s) return {};
+  const hit = STYLE_PRESETS.find((p) => p.re.test(s));
+  if (!hit) return {};
+  const theme: ColorMap = {};
+  if (hit.accent) theme.gold = hit.accent;
+  if (hit.dark) { theme.scrim = hit.dark; theme.bg = hit.dark; theme.navy = hit.dark; }
+  return { prefer: hit.prefer, theme, matched: hit.prefer };
+}
+
+// Property logo → top-left, Company logo → top-right (matches the Realtor form).
+function logoLayer(src: string, corner: 'tl' | 'tr'): Layer {
+  const w = 200, h = 88, m = 56;
+  return { id: uuidv4(), type: 'image', name: 'Logo', src, x: corner === 'tl' ? m : W - w - m, y: m, width: w, height: h, fit: 'contain' } as Layer;
 }
 function signed(obj: unknown, status: number, requestId?: string | null): NextResponse {
   const withId = typeof obj === 'object' && obj ? { request_id: requestId ?? null, ...obj } : obj;
@@ -111,22 +146,39 @@ export async function POST(req: NextRequest) {
   const t0 = Date.now();
   const logs: Array<{ step: string; ms: number; note?: string }> = [];
   try {
-    const heroDataUrl = toDataUrl(images[0], 'image/jpeg');
+    // All supplied photos (not just the first) — drives the multi-photo gallery.
+    const photoDataUrls = images.map((im) => toDataUrl(im, 'image/jpeg')).filter((u): u is string => !!u);
+    const heroDataUrl = photoDataUrls[0];
     if (!heroDataUrl) return signed({ status: 'error', error: { code: 'INVALID_IMAGES', message: 'unreadable image' } }, 400, requestId);
-    const logoDataUrl = toDataUrl(logos[0], 'image/png');
-    logs.push({ step: 'input', ms: Date.now() - t0, note: `${images.length} photo(s), ${logos.length} logo(s)` });
+    const propLogo = toDataUrl(logos[0], 'image/png'); // Property Logo  → top-left
+    const compLogo = toDataUrl(logos[1], 'image/png'); // Company Logo   → top-right
+    logs.push({ step: 'input', ms: Date.now() - t0, note: `${photoDataUrls.length} photo(s), ${logos.length} logo(s)` });
 
     const content = buildContent(property, options);
     const count = Math.min(Math.max(Number(options.count) || 3, 1), 4);
     // Rotate the starting archetype each call so repeat generations vary.
     const rotate = Math.floor(Math.random() * 4);
-    const designs = selectRealEstateLayouts(content, heroDataUrl, count, rotate);
+    // Visual style → preferred template + matching colour theme. An explicit
+    // options.template wins; else the style word; else a hint from the content.
+    const styleText = pick(options, 'style', 'visual_style', 'mood');
+    const style = resolveStyle(styleText);
+    // Photo-aware colours (default ON) — derive a premium palette from the hero
+    // so output isn't always gold-on-navy. Explicit style colours win on conflict.
+    const autoColor = options.auto_color !== false && pick(options, 'auto_color') !== 'false';
+    const photoPalette = autoColor ? await paletteFromImage(heroDataUrl) : null;
+    const themeOverride: ColorMap = { ...(photoPalette ?? {}), ...(style.theme ?? {}) };
+    const prefer = pick(options, 'template', 'layout', 'archetype') || style.prefer || archetypeFromText(`${styleText} ${content.tagline} ${content.projectName}`);
+    const designs = selectRealEstateLayouts(content, heroDataUrl, count, rotate, photoDataUrls, prefer, Object.keys(themeOverride).length ? themeOverride : null);
+
+    const logoLayers: Layer[] = [];
+    if (propLogo) logoLayers.push(logoLayer(propLogo, 'tl'));
+    if (compLogo) logoLayers.push(logoLayer(compLogo, 'tr'));
 
     const posters: Array<Record<string, unknown>> = [];
     for (const d of designs) {
       const tR = Date.now();
-      const layout: PosterLayout = logoDataUrl
-        ? { ...d.layout, layers: [...d.layout.layers, logoLayer(logoDataUrl)] }
+      const layout: PosterLayout = logoLayers.length
+        ? { ...d.layout, layers: [...d.layout.layers, ...logoLayers] }
         : d.layout;
       const png = await renderLayoutToPng(layout);
       const up = await uploadPosterToCloudinary(`data:image/png;base64,${png.toString('base64')}`, `tenants/${tenantId}`);
@@ -142,6 +194,16 @@ export async function POST(req: NextRequest) {
       logs.push({ step: 'render+upload', ms: Date.now() - tR, note: d.label });
     }
 
+    // Cost ledger — one record per delivered poster so Insights counts every
+    // Realtor image. Real-estate is deterministic → $0 AI cost (no OpenAI call).
+    await persistUsage(
+      posters.map((p) => ({
+        provider: 'engine', label: 'realtor-poster', model: '',
+        inputTokens: 0, outputTokens: 0, costUsd: 0, status: 'ok',
+      })),
+      { source: 'realtor', tenant_id: tenantId, request_id: requestId ?? null, total_ms: Date.now() - t0 },
+    );
+
     logRealtorCall({
       status: 'completed', request_id: requestId, tenant_id: tenantId,
       posters_count: posters.length, images_count: images.length, logos_count: logos.length,
@@ -153,7 +215,11 @@ export async function POST(req: NextRequest) {
     return signed({
       status: 'completed',
       tenant_id: tenantId,
-      posters,
+      poster_type: photoDataUrls.length > 1 ? 'multi' : 'single',
+      style_applied: style.matched ?? prefer ?? 'auto',
+      palette: photoPalette ? { accent: photoPalette.gold, base: photoPalette.scrim } : null,
+      poster_count: posters.length,
+      posters,            // each: cloudinary_url, public_id, width, height, format, layout, archetype
       logs,
       cost_usd: 0, // real-estate is deterministic — no OpenAI cost
       engine_version: ENGINE_VERSION,

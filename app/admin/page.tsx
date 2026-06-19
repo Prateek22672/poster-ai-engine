@@ -7,6 +7,7 @@ import {
   CircleCheck, CircleX, Activity, DollarSign, Radio, Layers, Lock,
 } from 'lucide-react';
 import { DotsLoading } from '@/components/ui/loader';
+import { Money, CurrencyToggle } from '@/components/ui/Money';
 
 // Frosted pill — identical language to the main app header (DashboardNav).
 const PILL =
@@ -150,6 +151,7 @@ export default function AdminPage() {
 
         {/* Action pills */}
         <div className="flex items-center gap-1.5">
+          <CurrencyToggle className={`!rounded-full !border-white/15 ${PILL}`} />
           <Link href="/admin/service" className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] text-white/65 hover:text-white transition-colors hover:bg-ink ${PILL}`}>
             <Radio className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Service</span>
           </Link>
@@ -166,9 +168,9 @@ export default function AdminPage() {
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Stat icon={<Activity className="w-4 h-4" />} label="Total calls" value={String(stats?.totals.calls ?? 0)} />
-          <Stat icon={<DollarSign className="w-4 h-4" />} label="Total cost" value={`$${(stats?.totals.cost ?? 0).toFixed(4)}`} accent />
+          <Stat icon={<DollarSign className="w-4 h-4" />} label="Total cost" value={<Money usd={stats?.totals.cost ?? 0} decimals={4} />} accent />
           <Stat icon={<Activity className="w-4 h-4" />} label="Calls today" value={String(stats?.today.calls ?? 0)} />
-          <Stat icon={<DollarSign className="w-4 h-4" />} label="Cost today" value={`$${(stats?.today.cost ?? 0).toFixed(4)}`} />
+          <Stat icon={<DollarSign className="w-4 h-4" />} label="Cost today" value={<Money usd={stats?.today.cost ?? 0} decimals={4} />} />
         </div>
 
         {/* Health */}
@@ -286,7 +288,7 @@ function Centered({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-function Stat({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: string; accent?: boolean }) {
+function Stat({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: React.ReactNode; accent?: boolean }) {
   return (
     <div className={`rounded-xl border p-4 ${accent ? 'bg-ink border-emerald-500/30' : 'bg-ink border-white/10'}`}>
       <div className="flex items-center gap-1.5 text-white/40 text-xs">{icon}{label}</div>

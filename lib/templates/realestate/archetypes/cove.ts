@@ -1,14 +1,16 @@
 import type { Layer, PosterLayout } from '@/types/poster';
 import type { RealEstateContent } from '../content';
 import { H, T, R, photoBg, ctaPill, infoBlock, fitFontSize, textHeight, clampOneLine, frame } from '../toolkit';
+import { getTheme, type ColorMap } from '../theme';
 
 // COVE — clean LEFT text column on a frosted panel, building photo on the right.
-const NAVY = '#0B2239', GOLD = '#A9803F', TEAL = '#2F6E8F', PANEL = '#F6F4EF', MUTED = '#6A7480';
 const LX = 76, PW = 648, TW = 500;
 
 export const coveLabel = 'Left Column';
 
-export function buildCove(c: RealEstateContent, url?: string | null): PosterLayout {
+export function buildCove(c: RealEstateContent, url?: string | null, _photos?: string[], theme?: ColorMap): PosterLayout {
+  const t = getTheme('cove', theme);
+  const NAVY = t.navy, GOLD = t.gold, TEAL = t.teal, PANEL = t.panel, MUTED = t.muted;
   const L: Layer[] = [photoBg(url), R({ x: 0, y: 0, width: PW, height: H, fill: PANEL, opacity: 0.94 })];
   // thin gold seam between panel and photo
   L.push(R({ x: PW - 4, y: 0, width: 4, height: H, fill: GOLD }));
@@ -45,7 +47,7 @@ export function buildCove(c: RealEstateContent, url?: string | null): PosterLayo
     by += 116;
   }
 
-  L.push(...ctaPill(LX, 1126, 340, c.cta, NAVY, '#FFFFFF'));
+  L.push(...ctaPill(LX, 1126, 340, c.cta, t.cta, t.ctaText));
 
   return frame(L, 'cove', 'luxury', [PANEL, NAVY, GOLD, MUTED, '#FFFFFF'], ['Playfair Display', 'Switzer']);
 }

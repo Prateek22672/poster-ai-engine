@@ -1,0 +1,27 @@
+
+> poster-ai@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.5.19
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.0.12:3000
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 4.7s
+ ○ Compiling /api/health ...
+ ✓ Compiled /api/health in 6.7s (297 modules)
+ GET /api/health 200 in 1859ms
+ GET /api/health 200 in 58ms
+ ○ Compiling /create ...
+ ✓ Compiled /create in 20.4s (1798 modules)
+ GET /create 200 in 27639ms
+ ○ Compiling /studio ...
+ ✓ Compiled /studio in 17.7s (1875 modules)
+ GET /studio 200 in 12281ms
+ ○ Compiling /insights ...
+ ✓ Compiled /insights in 1577ms (1898 modules)
+ GET /insights 200 in 2363ms
+ ○ Compiling /admin ...
+ ✓ Compiled /admin in 1463ms (1918 modules)
+ GET /admin 200 in 2191ms

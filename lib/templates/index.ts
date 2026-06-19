@@ -3,7 +3,7 @@ import type { DesignTemplateMetadata } from '@/types/rag';
 import { FITNESS_TEMPLATE_METADATA } from './fitness';
 import { SALE_TEMPLATE_METADATA } from './sale';
 import { EVENT_TEMPLATE_METADATA } from './event';
-import { REALESTATE_TEMPLATE_METADATA } from './realestate';
+import { ALL_RAG_METADATA as REALESTATE_TEMPLATE_METADATA } from './realestate';
 
 export * from './fitness';
 export * from './sale';

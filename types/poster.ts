@@ -168,4 +168,6 @@ export interface PosterGenerationInput {
   logoDataUrl?: string;
   /** Client-supplied background photo URL. When set, used instead of Pexels. */
   heroImageUrl?: string;
+  /** Multiple client-supplied photos (data URLs). Enables the multi-photo gallery. */
+  heroImageUrls?: string[];
 }

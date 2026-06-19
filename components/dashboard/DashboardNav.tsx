@@ -7,7 +7,7 @@ import { Sparkles, LayoutGrid, ShieldCheck, Layers, BarChart3, Eye } from 'lucid
 const NAV_ITEMS = [
   { href: '/create', label: 'Create', icon: Sparkles },
   { href: '/gallery', label: 'Gallery', icon: LayoutGrid },
-  { href: '/preview', label: 'Preview', icon: Eye },
+  { href: '/studio', label: 'Studio', icon: Eye },
   { href: '/insights', label: 'Insights', icon: BarChart3 },
 ];
 

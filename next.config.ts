@@ -21,6 +21,13 @@ const nextConfig: NextConfig = {
     config.externals = [...(config.externals || []), { canvas: 'canvas' }];
     return config;
   },
+  // /preview was renamed to /studio — keep old links working.
+  async redirects() {
+    return [
+      { source: '/preview', destination: '/studio', permanent: true },
+      { source: '/preview/:path*', destination: '/studio/:path*', permanent: true },
+    ];
+  },
   // Security headers on every response — hardens the engine + admin against
   // clickjacking, MIME sniffing, referrer leakage, and downgrade attacks.
   async headers() {

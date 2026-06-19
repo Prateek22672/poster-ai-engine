@@ -3,7 +3,8 @@ import { extractIntent } from './intent-extractor';
 import { planLayout, generateLayoutVariation } from './layout-planner';
 import { searchDesignTemplates } from '@/lib/rag/retriever';
 import { searchPosterImage, buildImageQuery } from '@/lib/images/pexels';
-import { selectRealEstateLayouts, extractRealEstateContent } from '@/lib/templates/realestate';
+import { selectRealEstateLayouts, extractRealEstateContent, archetypeFromText } from '@/lib/templates/realestate';
+import { paletteFromImage } from '@/lib/color/palette';
 import { totalCost, trackEvent, type CallUsage } from '@/lib/ai/cost';
 import { persistUsage } from '@/lib/usage/log';
 import type { PosterGenerationInput, GeneratedPoster, PosterVariation } from '@/types/poster';
@@ -52,19 +53,30 @@ export async function generatePoster(
   }
   console.log(`[Orchestrator] Retrieved ${templates.length} design templates`);
 
-  // 3b. Hero photo: use the client-supplied URL if given, else fetch from Pexels.
+  // 3b. Hero photo(s): use the client's OWN uploaded photos if given, else Pexels.
+  //     `photos` drives the multi-photo gallery; `heroImage` is the single hero
+  //     used by the AI planner for non-real-estate categories.
   let heroImage: Awaited<ReturnType<typeof searchPosterImage>> = null;
-  if (input.heroImageUrl?.trim()) {
+  let photos: string[] = [];
+  const clientPhotos = (input.heroImageUrls?.filter(Boolean) ?? []) as string[];
+  if (clientPhotos.length) {
+    photos = clientPhotos;
+    const u = photos[0];
+    heroImage = { url: u, rawUrl: u, width: 1080, height: 1350, avgColor: '#222222', photographer: '', photographerUrl: '', alt: 'client image' };
+    console.log(`[Orchestrator] Using ${photos.length} client-supplied photo(s)`);
+  } else if (input.heroImageUrl?.trim()) {
     const u = input.heroImageUrl.trim();
+    photos = [u];
     heroImage = { url: u, rawUrl: u, width: 1080, height: 1350, avgColor: '#222222', photographer: '', photographerUrl: '', alt: 'client image' };
     console.log('[Orchestrator] Using client-supplied hero image');
   } else {
     const imageQuery = buildImageQuery(intent.category, intent.keywords);
     heroImage = await searchPosterImage(imageQuery, 'portrait');
     trackEvent(usage, 'image-search', 'pexels', heroImage ? 'ok' : 'error');
+    if (heroImage) photos = [heroImage.url];
     console.log(
       heroImage
-        ? `[Orchestrator] Hero image: "${imageQuery}" -> ${heroImage.rawUrl}`
+        ? `[Orchestrator] Hero image (Pexels fallback): "${imageQuery}" -> ${heroImage.rawUrl}`
         : `[Orchestrator] No hero image (query: "${imageQuery}")`
     );
   }
@@ -77,7 +89,12 @@ export async function generatePoster(
   let variations: PosterVariation[];
   if (intent.category === 'realestate') {
     const content = extractRealEstateContent(input, intent);
-    const designs = selectRealEstateLayouts(content, heroImage?.url, 3);
+    // If the prompt names a look ("cinematic", "gallery"…), lead with it.
+    const prefer = archetypeFromText(`${input.prompt} ${intent.keywords.join(' ')}`);
+    // Photo-aware colours so the look matches the uploaded image (not always gold/navy).
+    const palette = await paletteFromImage(photos[0] ?? heroImage?.url);
+    // 4 layouts so the requested/gallery layout leads + variants follow.
+    const designs = selectRealEstateLayouts(content, photos[0] ?? heroImage?.url, 4, 0, photos, prefer, palette);
     primaryLayout = designs[0].layout;
     variations = designs.slice(1).map((d) => ({ id: uuidv4(), label: d.label, layout: d.layout }));
     console.log(`[Orchestrator] Real-estate: ${designs.length} distinct archetypes (${designs.map((d) => d.label).join(', ')})`);

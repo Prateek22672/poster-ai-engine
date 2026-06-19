@@ -1,0 +1,25 @@
+{
+  "overlay": {
+    "scrim": "#06101c",
+    "gold": "white",
+    "white": "#FFFFFF",
+    "muted": "rgba(255,255,255,0.72)",
+    "cta": "white",
+    "ctaText": "#1A1206"
+  },
+  "topband": {
+    "navy": "rgba(0, 0, 0, 0.39)",
+    "gold": "yellow",
+    "white": "#FFFFFF",
+    "cta": "white",
+    "ctaText": "#1A1206"
+  },
+  "gallery": {
+    "navy": "#72624f",
+    "gold": "#ffffff",
+    "white": "#FFFFFF",
+    "muted": "rgba(255,255,255,0.7)",
+    "cta": "#ffffff",
+    "ctaText": "#1A1206"
+  }
+}

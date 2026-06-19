@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, type ChangeEvent } from 'react';
+import { useState, useEffect, useRef, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertCircle, ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
+import { AlertCircle, ArrowLeft, ChevronDown, ChevronUp, Check } from 'lucide-react';
 import { DashboardNav } from '@/components/dashboard/DashboardNav';
 import { PosterEditor } from '@/components/poster/PosterEditor';
-import { Loader, LoadingText } from '@/components/ui/loader';
+import { Loader } from '@/components/ui/loader';
 import { PromptInputBox } from '@/components/ui/PromptInputBox';
 import type { GeneratedPoster, PosterGenerationInput, PosterCategory, PosterStyle } from '@/types/poster';
 
@@ -25,11 +25,16 @@ const FORMATS: Array<{ v: '4:5' | '1:1' | '9:16'; label: string }> = [
   { v: '1:1', label: 'Square' },
   { v: '9:16', label: 'Story 9:16' },
 ];
+// Real-estate only for now (the polished deterministic archetypes). Other
+// domains (restaurant, fitness, sale, event) will be added once they have
+// their own premium templates.
 const SUGGESTIONS: Array<{ label: string; prompt: string; category: PosterCategory }> = [
-  { label: '🏠 Luxury apartment launch', category: 'realestate', prompt: 'Luxury modern apartments, studio 1 & 2 BR, starting from AED 585K, Q1 2027 handover, 60/40 payment plan, Downtown' },
-  { label: '🏠 Premium villa for sale', category: 'realestate', prompt: 'Ultra-luxury 4 BHK villa for sale, ₹12 Cr onwards, 4000-4900 sqft, possession Q4 2027, ocean views, Sector 31' },
-  { label: '🍽️ Fine dining opening', category: 'restaurant', prompt: 'Fine dining grand opening, appetizing plated food, elegant tagline, reservation CTA, gold-on-charcoal palette' },
-  { label: '🍽️ Cozy bistro promo', category: 'restaurant', prompt: 'Cozy Italian bistro, wood-fired pizza, 2-for-1 happy hour 5-7pm, warm inviting palette' },
+  { label: '🏙️ Apartment launch', category: 'realestate', prompt: 'Luxury modern apartments, studio 1 & 2 BR, starting from AED 585K, Q1 2027 handover, 60/40 payment plan, Downtown skyline' },
+  { label: '🏡 Premium villa', category: 'realestate', prompt: 'Ultra-luxury 4 BHK villa for sale, ₹12 Cr onwards, 4000-4900 sqft, possession Q4 2027, ocean views, Sector 31' },
+  { label: '🌇 Rooftop residences', category: 'realestate', prompt: 'Cinematic rooftop apartments at dusk, 1-2 bed, booking from 15%, chic rooftop lounge, premium gold-on-navy look' },
+  { label: '🏘️ Premium townhouses', category: 'realestate', prompt: 'Exclusive 3 BHK townhouses, lush green neighbourhood, basketball court, pollution-free environment, kids play zone, High Ground Rd' },
+  { label: '🌊 Beachfront estate', category: 'realestate', prompt: 'Oceanfront luxury villa, 6 bed 7 bath, private infinity pool, panoramic sea views, Malibu, multiple interior and exterior photos' },
+  { label: '🏢 Commercial space', category: 'realestate', prompt: 'Grade-A commercial office space for lease, 500-5000 sqft, prime business district, flexible floor plans, modern glass tower' },
 ];
 
 /* ── UI bits ────────────────────────────────────────────────────── */
@@ -51,6 +56,87 @@ function Chip({ label, active, onClick, accent = 'indigo' }: { label: string; ac
 }
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return <p className="text-[11px] uppercase tracking-widest text-white/30 mb-2">{children}</p>;
+}
+
+/* ── Generating view: smooth estimated progress + step states ────── */
+const GEN_STEPS = [
+  { label: 'Extracting design intent', at: 0 },
+  { label: 'Searching design templates', at: 28 },
+  { label: 'Planning the composition', at: 56 },
+  { label: 'Rendering your layout', at: 82 },
+];
+function GeneratingView({ estimateSec = 12 }: { estimateSec?: number }) {
+  const [progress, setProgress] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
+  const start = useRef(0);
+
+  useEffect(() => {
+    start.current = Date.now();
+    const cap = 95; // hold just under 100 — real completion swaps to the editor
+    const tau = Math.max(2, estimateSec) * 0.55;
+    const id = setInterval(() => {
+      const t = (Date.now() - start.current) / 1000;
+      setElapsed(t);
+      setProgress(Math.min(cap, (1 - Math.exp(-t / tau)) * 100));
+    }, 90);
+    return () => clearInterval(id);
+  }, [estimateSec]);
+
+  const pct = Math.round(progress);
+  const remaining = Math.max(1, Math.ceil(estimateSec - elapsed));
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.97, y: 8 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.97 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      className="w-full max-w-md px-6 text-center"
+    >
+      <div className="flex items-center justify-center gap-2.5 mb-6">
+        <Loader size={26} strokeWidth={2.4} className="text-indigo-400" />
+        <span className="shimmer-text text-[17px] font-semibold tracking-wide">Crafting your poster</span>
+      </div>
+
+      {/* Progress bar */}
+      <div className="flex items-end justify-between mb-2">
+        <span className="text-3xl font-bold text-white tabular-nums">{pct}<span className="text-lg text-white/40">%</span></span>
+        <span className="text-xs text-white/45 tabular-nums">
+          {elapsed < estimateSec ? `~${remaining}s remaining` : 'almost there…'} · {elapsed.toFixed(0)}s elapsed
+        </span>
+      </div>
+      <div className="relative h-2 w-full rounded-full bg-white/10 overflow-hidden">
+        <motion.div
+          className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-indigo-500 via-violet-500 to-pink-500"
+          animate={{ width: `${progress}%` }}
+          transition={{ ease: 'easeOut', duration: 0.3 }}
+        />
+        {/* moving sheen */}
+        <motion.div
+          className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+          animate={{ x: ['-120%', '420%'] }}
+          transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      </div>
+
+      {/* Steps */}
+      <div className="mt-7 flex flex-col gap-2.5 text-left">
+        {GEN_STEPS.map((s, i) => {
+          const next = GEN_STEPS[i + 1]?.at ?? 100;
+          const done = progress >= next;
+          const active = !done && progress >= s.at;
+          return (
+            <div key={s.label} className="flex items-center gap-3">
+              <span className={`flex items-center justify-center w-5 h-5 rounded-full flex-shrink-0 transition-colors ${done ? 'bg-emerald-500/20 text-emerald-400' : active ? 'bg-indigo-500/20 text-indigo-300' : 'bg-white/5 text-white/20'}`}>
+                {done ? <Check className="w-3 h-3" /> : active ? <motion.span className="w-1.5 h-1.5 rounded-full bg-indigo-400" animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1, repeat: Infinity }} /> : <span className="w-1.5 h-1.5 rounded-full bg-white/20" />}
+              </span>
+              <span className={`text-sm transition-colors ${done ? 'text-white/55' : active ? 'text-white' : 'text-white/35'}`}>{s.label}</span>
+            </div>
+          );
+        })}
+      </div>
+    </motion.div>
+  );
 }
 
 /* ── Page ───────────────────────────────────────────────────────── */
@@ -83,7 +169,7 @@ export default function CreatePage() {
     reader.readAsDataURL(file);
   }
 
-  function buildInput(promptText: string): PosterGenerationInput {
+  function buildInput(promptText: string, photos: string[] = []): PosterGenerationInput {
     return {
       prompt: promptText.trim(),
       ...(category && { category }),
@@ -94,7 +180,23 @@ export default function CreatePage() {
       ...(colorPref.trim() && { colorPreference: colorPref.trim() }),
       ...(brandMode === 'text' && brandText.trim() && { brandText: brandText.trim() }),
       ...(brandMode === 'logo' && logoDataUrl && { logoDataUrl }),
+      // Use the user's OWN uploaded photos (not Pexels). First = hero; all = gallery.
+      ...(photos.length > 0 && { heroImageUrl: photos[0], heroImageUrls: photos }),
     };
+  }
+
+  /** Read attached File objects into data URLs (kept small enough to POST). */
+  function filesToDataUrls(files: File[]): Promise<string[]> {
+    return Promise.all(
+      files.filter((f) => f.type.startsWith('image/')).slice(0, 6).map(
+        (f) => new Promise<string>((resolve) => {
+          const r = new FileReader();
+          r.onload = () => resolve(typeof r.result === 'string' ? r.result : '');
+          r.onerror = () => resolve('');
+          r.readAsDataURL(f);
+        })
+      )
+    ).then((urls) => urls.filter(Boolean));
   }
 
   async function runGeneration(input: PosterGenerationInput) {
@@ -123,10 +225,11 @@ export default function CreatePage() {
     }
   }
 
-  function handleSend(prompt: string) {
+  async function handleSend(prompt: string, files?: File[]) {
     const desc = (prompt || description).trim();
     if (!desc) return;
-    runGeneration(buildInput(desc));
+    const photos = files && files.length ? await filesToDataUrls(files) : [];
+    runGeneration(buildInput(desc, photos));
   }
   async function handleRegenerate() {
     if (lastInput) await runGeneration(lastInput);
@@ -327,18 +430,7 @@ export default function CreatePage() {
         <AnimatePresence>
           {state === 'generating' && (
             <motion.div key="gen" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-ink backdrop-blur-sm">
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="flex flex-col items-center gap-6 text-center">
-                <Loader size={76} strokeWidth={1.8} className="text-indigo-400" />
-                <LoadingText text="Crafting your poster" size={22} />
-                <div className="flex flex-col gap-2 text-left w-64">
-                  {['Extracting design intent', 'Searching design templates', 'Planning composition', 'Rendering layout'].map((step, i) => (
-                    <motion.div key={step} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.6 }} className="flex items-center gap-2 text-xs text-white/50">
-                      <div className="w-1 h-1 bg-indigo-500 rounded-full animate-pulse" style={{ animationDelay: `${i * 200}ms` }} />
-                      {step}
-                    </motion.div>
-                  ))}
-                </div>
-              </motion.div>
+              <GeneratingView estimateSec={lastInput?.category === 'realestate' || (lastInput?.heroImageUrls?.length ?? 0) > 0 ? 7 : 14} />
             </motion.div>
           )}
         </AnimatePresence>

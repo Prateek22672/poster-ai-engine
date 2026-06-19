@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { RefreshCw, DollarSign, Activity, Zap } from 'lucide-react';
+import { RefreshCw, DollarSign, Activity, Zap, Radio, ImageIcon, Timer, ShieldAlert } from 'lucide-react';
 import { DashboardNav } from '@/components/dashboard/DashboardNav';
+import { Money, CurrencyToggle } from '@/components/ui/Money';
 
 interface KindRow {
   kind: string; provider: string; model: string | null;
@@ -13,12 +14,17 @@ interface RecentRow {
   created_at: string; provider: string; kind: string; model: string | null;
   input_tokens: number; output_tokens: number; cost: number; status: string;
 }
+interface RealtorSummary {
+  requests: number; completed: number; errors: number; blocked: number; today: number;
+  posters: number; avgMs: number; avgPerPosterMs: number; lastMs: number;
+}
 interface Summary {
   totals: { calls: number; cost: number; input_tokens: number; output_tokens: number };
   today: { calls: number; cost: number };
   by_kind: KindRow[];
   by_provider: ProviderRow[];
   recent: RecentRow[];
+  realtor?: RealtorSummary;
 }
 
 // Plain-English explanation of every call type the engine makes.
@@ -29,10 +35,9 @@ const KIND_INFO: Record<string, string> = {
   vision: 'Analyses a user-uploaded reference image. Model: gpt-4o vision (only if a reference is uploaded).',
   'image-search': 'Fetches a real background photo from Pexels. Free (no token cost).',
   upload: 'Uploads the final poster to Cloudinary. Free on the current plan.',
+  'realtor-poster': 'A poster rendered for the Realtor integration (deterministic real-estate engine). $0 AI cost — no OpenAI call.',
 };
 
-const money = (n: number) => `$${(n ?? 0).toFixed(6)}`;
-const moneyShort = (n: number) => `$${(n ?? 0).toFixed(4)}`;
 
 export default function InsightsPage() {
   const [data, setData] = useState<Summary | null>(null);
@@ -57,9 +62,11 @@ export default function InsightsPage() {
   useEffect(() => { load(); }, []);
 
   const totalCost = data?.totals.cost ?? 0;
-  const perPoster = data && data.totals.calls > 0
-    ? totalCost / Math.max(1, data.by_kind.find((k) => k.kind === 'layout')?.calls ?? 1)
-    : 0;
+  // A "poster" = an AI design (kind 'layout') OR a deterministic Realtor poster.
+  const layoutCalls = data?.by_kind.find((k) => k.kind === 'layout')?.calls ?? 0;
+  const realtorPosters = data?.by_kind.find((k) => k.kind === 'realtor-poster')?.calls ?? 0;
+  const totalPosters = layoutCalls + realtorPosters;
+  const perPoster = totalPosters > 0 ? totalCost / totalPosters : 0;
 
   return (
     <div className="min-h-dvh flex flex-col relative">
@@ -74,13 +81,16 @@ export default function InsightsPage() {
               Every API call the engine makes is logged here — counts, models, tokens, and real cost.
             </p>
           </div>
-          <button
-            onClick={load}
-            className="flex items-center gap-2 text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 rounded-lg transition-colors"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            <CurrencyToggle />
+            <button
+              onClick={load}
+              className="flex items-center gap-2 text-xs text-white/60 hover:text-white bg-ink border border-white/10 px-3 py-2 rounded-lg transition-colors"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -94,10 +104,29 @@ export default function InsightsPage() {
             {/* Summary cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
               <Card icon={<Activity className="w-4 h-4" />} label="Total API calls" value={String(data.totals.calls)} />
-              <Card icon={<DollarSign className="w-4 h-4" />} label="Total cost (all time)" value={moneyShort(totalCost)} accent />
-              <Card icon={<Zap className="w-4 h-4" />} label="Calls today" value={String(data.today.calls)} />
-              <Card icon={<DollarSign className="w-4 h-4" />} label="Avg cost / poster" value={moneyShort(perPoster)} />
+              <Card icon={<DollarSign className="w-4 h-4" />} label="Total cost (all time)" value={<Money usd={totalCost} decimals={4} />} accent />
+              <Card icon={<ImageIcon className="w-4 h-4" />} label="Posters generated" value={String(totalPosters)} />
+              <Card icon={<DollarSign className="w-4 h-4" />} label="Avg cost / poster" value={<Money usd={perPoster} decimals={6} />} />
             </div>
+
+            {/* Realtor integration */}
+            {data.realtor && (
+              <Section
+                title="Realtor integration"
+                subtitle="Every poster request coming from the Realtor SaaS — counted, timed, and costed."
+              >
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                  <MiniStat icon={<Radio className="w-4 h-4" />} label="Requests" value={String(data.realtor.requests)} sub={`${data.realtor.today} today`} />
+                  <MiniStat icon={<ImageIcon className="w-4 h-4" />} label="Posters delivered" value={String(data.realtor.posters)} sub={`${data.realtor.completed} completed`} good />
+                  <MiniStat icon={<Timer className="w-4 h-4" />} label="Avg render / poster" value={data.realtor.avgPerPosterMs ? `${(data.realtor.avgPerPosterMs / 1000).toFixed(1)}s` : '—'} sub={data.realtor.lastMs ? `last ${(data.realtor.lastMs / 1000).toFixed(1)}s` : ''} />
+                  <MiniStat icon={<ShieldAlert className="w-4 h-4" />} label="Errors / blocked" value={`${data.realtor.errors} / ${data.realtor.blocked}`} sub="failed · rejected" bad={data.realtor.errors + data.realtor.blocked > 0} />
+                </div>
+                <div className="flex items-center justify-between rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] px-4 py-3">
+                  <span className="text-xs text-white/60">Realtor AI cost per poster</span>
+                  <span className="text-sm font-mono text-emerald-400"><Money usd={0} decimals={6} /> · deterministic (no OpenAI)</span>
+                </div>
+              </Section>
+            )}
 
             {/* Cost by call type */}
             <Section title="Cost by call type" subtitle="What every type of call does and what it has cost so far.">
@@ -126,7 +155,7 @@ export default function InsightsPage() {
                         <td className="py-2.5 px-3 text-right text-white/50 font-mono text-xs">
                           {k.input_tokens}/{k.output_tokens}
                         </td>
-                        <td className="py-2.5 pl-3 text-right text-emerald-400 font-mono">{money(k.cost)}</td>
+                        <td className="py-2.5 pl-3 text-right text-emerald-400 font-mono"><Money usd={k.cost} decimals={6} /></td>
                       </tr>
                     ))}
                     {data.by_kind.length === 0 && (
@@ -144,7 +173,7 @@ export default function InsightsPage() {
                   <div key={p.provider} className="flex-1 min-w-[140px] bg-white/[0.03] border border-white/10 rounded-xl p-3">
                     <div className="text-xs text-white/40 uppercase tracking-wide">{p.provider}</div>
                     <div className="text-white font-semibold mt-1">{p.calls} calls</div>
-                    <div className="text-emerald-400 text-sm font-mono">{money(p.cost)}</div>
+                    <div className="text-emerald-400 text-sm font-mono"><Money usd={p.cost} decimals={6} /></div>
                   </div>
                 ))}
               </div>
@@ -171,7 +200,7 @@ export default function InsightsPage() {
                         <td className="py-2 px-3 text-white/80">{r.kind}</td>
                         <td className="py-2 px-3 text-white/50 font-mono">{r.model ?? '—'}</td>
                         <td className="py-2 px-3 text-right text-white/50 font-mono">{r.input_tokens}/{r.output_tokens}</td>
-                        <td className="py-2 px-3 text-right text-emerald-400 font-mono">{money(r.cost)}</td>
+                        <td className="py-2 px-3 text-right text-emerald-400 font-mono"><Money usd={r.cost} decimals={6} /></td>
                         <td className="py-2 pl-3">
                           <span className={r.status === 'ok' ? 'text-emerald-400' : 'text-red-400'}>{r.status}</span>
                         </td>
@@ -196,11 +225,21 @@ export default function InsightsPage() {
   );
 }
 
-function Card({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: string; accent?: boolean }) {
+function Card({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: React.ReactNode; accent?: boolean }) {
   return (
     <div className={`rounded-xl border p-4 ${accent ? 'bg-ink border-emerald-500/30' : 'bg-ink border-white/10'}`}>
       <div className="flex items-center gap-1.5 text-white/40 text-xs">{icon}{label}</div>
       <div className={`text-2xl font-bold mt-1.5 ${accent ? 'text-emerald-400' : 'text-white'}`}>{value}</div>
+    </div>
+  );
+}
+
+function MiniStat({ icon, label, value, sub, good, bad }: { icon: React.ReactNode; label: string; value: string; sub?: string; good?: boolean; bad?: boolean }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+      <div className="flex items-center gap-1.5 text-white/40 text-[11px]">{icon}{label}</div>
+      <div className={`text-xl font-bold mt-1 ${bad ? 'text-red-400' : good ? 'text-emerald-400' : 'text-white'}`}>{value}</div>
+      {sub && <div className="text-[11px] text-white/30 mt-0.5">{sub}</div>}
     </div>
   );
 }

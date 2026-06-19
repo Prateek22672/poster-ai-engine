@@ -1,15 +1,17 @@
 import type { Layer, PosterLayout } from '@/types/poster';
 import type { RealEstateContent } from '../content';
 import { W, T, R, photoBg, scrim, ctaPill, fitFontSize, textHeight, clampOneLine, frame } from '../toolkit';
+import { getTheme, type ColorMap } from '../theme';
 
 // TOP BAND — name + price in a solid color band on top; building below;
 // specs + CTA in a glass strip near the bottom. The band auto-sizes to the name.
-const NAVY = '#0E2436', GOLD = '#D8B26A', WHITE = '#FFFFFF';
 const LX = 80, CW = W - 160;
 
 export const topbandLabel = 'Top Band';
 
-export function buildTopBand(c: RealEstateContent, url?: string | null): PosterLayout {
+export function buildTopBand(c: RealEstateContent, url?: string | null, _photos?: string[], theme?: ColorMap): PosterLayout {
+  const t = getTheme('topband', theme);
+  const NAVY = t.navy, GOLD = t.gold, WHITE = t.white;
   const L: Layer[] = [photoBg(url)];
 
   const nameSize = fitFontSize(c.projectName, CW, 86, 44, 3, true);
@@ -37,7 +39,7 @@ export function buildTopBand(c: RealEstateContent, url?: string | null): PosterL
   L.push(T({ text: clampOneLine(c.configValue, 28, 600, false), x: 96, y: 1142, fontSize: 28, fontWeight: '700', color: WHITE, width: 600 }));
   L.push(T({ text: c.detailLabel.toUpperCase(), x: 96, y: 1196, fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.5)', letterSpacing: 2, width: 420 }));
   L.push(T({ text: clampOneLine(c.detailValue, 22, 600, false), x: 96, y: 1216, fontSize: 22, fontWeight: '600', color: WHITE, width: 600 }));
-  L.push(...ctaPill(W - 60 - 300, 1138, 300, c.cta, GOLD, '#1A1206'));
+  L.push(...ctaPill(W - 60 - 300, 1138, 300, c.cta, t.cta, t.ctaText));
 
   return frame(L, 'topband', 'luxury', [NAVY, GOLD, WHITE, '#888888', '#FFFFFF'], ['Oswald', 'Switzer']);
 }

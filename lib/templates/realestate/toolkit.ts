@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import type {
-  PosterLayout, Layer, BackgroundLayer, TextLayer, ShapeLayer, PosterStyle,
+  PosterLayout, Layer, BackgroundLayer, TextLayer, ShapeLayer, ImageLayer, PosterStyle,
 } from '@/types/poster';
 
 /**
@@ -79,6 +79,10 @@ export function T(o: Partial<TextLayer> & { text: string; x: number; y: number; 
 }
 export function R(o: Partial<ShapeLayer> & { x: number; y: number; width: number; height: number }): ShapeLayer {
   return { id: uuidv4(), type: 'shape', shapeType: 'rect', name: 'shape', ...o } as ShapeLayer;
+}
+/** A photo placed in a box (cover-fit, optionally rounded). For collages. */
+export function img(src: string, x: number, y: number, w: number, h: number, cornerRadius = 0): ImageLayer {
+  return { id: uuidv4(), type: 'image', name: 'Photo', src, x, y, width: w, height: h, fit: 'cover', cornerRadius } as ImageLayer;
 }
 export function photoBg(url?: string | null): BackgroundLayer {
   if (url) {
