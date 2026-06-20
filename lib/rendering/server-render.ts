@@ -32,6 +32,30 @@ function ensureFonts(): void {
   reg('CormorantGaramond.ttf', 'Cormorant Garamond');
   reg('Inter.ttf', 'Inter');
   reg('Inter.ttf', 'Switzer'); // alias: we don't ship the paid Switzer font
+  // ── extra display/text fonts ──────────────────────────────────
+  reg('SpaceGrotesk.ttf', 'Space Grotesk');
+  reg('HostGrotesk.ttf', 'Host Grotesk');
+  reg('SansitaSwashed.ttf', 'Sansita Swashed');
+  reg('ClimateCrisis.otf', 'Climate Crisis');
+  reg('Gnomon.ttf', 'Gnomon');
+  reg('Karrik.ttf', 'Karrik');
+  reg('VioletSans.ttf', 'Violet Sans');
+  // ── LT display family ─────────────────────────────────────────
+  reg('LTAvocado.ttf', 'LT Avocado');
+  reg('LTBeverage.otf', 'LT Beverage');
+  reg('LTCrow.ttf', 'LT Crow');
+  reg('LTDelilah.ttf', 'LT Delilah');
+  reg('LTHumor.ttf', 'LT Humor');
+  reg('LTInstitute.otf', 'LT Institute');
+  reg('LTMakeup.otf', 'LT Makeup');
+  reg('LTOval.otf', 'LT Oval');
+  reg('LTRenovate.otf', 'LT Renovate');
+  reg('LTSaeada.otf', 'LT Saeada');
+  reg('LTSonoma.otf', 'LT Sonoma');
+  reg('LTSoul.otf', 'LT Soul');
+  reg('LTSpaz.otf', 'LT Spaz');
+  reg('LTSuperior.otf', 'LT Superior');
+  reg('LTWave.otf', 'LT Wave');
 }
 
 function fontStack(family?: string): string {

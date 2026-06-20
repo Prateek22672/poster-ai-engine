@@ -24,7 +24,7 @@ export function buildCove(c: RealEstateContent, url?: string | null, _photos?: s
 
   // Project name / listing title — auto-fits to max 3 lines so it never overflows
   const nameSize = fitFontSize(c.projectName, TW, 72, 34, 3, true);
-  L.push(T({ text: c.projectName, x: LX, y, fontSize: nameSize, fontFamily: 'Playfair Display', fontWeight: '700', color: NAVY, lineHeight: 1.02, width: TW, role: 'headline' }));
+  L.push(T({ text: c.projectName, x: LX, y, fontSize: nameSize, fontFamily: t.font, fontWeight: '700', color: NAVY, lineHeight: 1.02, width: TW, role: 'headline' }));
   y += textHeight(c.projectName, nameSize, TW, 1.02, true) + 18;
 
   if (c.developer) {

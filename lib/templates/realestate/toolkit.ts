@@ -97,6 +97,28 @@ export function photoBg(url?: string | null): BackgroundLayer {
 export function scrim(x: number, y: number, w: number, h: number, fill = '#06101C', opacity = 0.6, cornerRadius = 0): ShapeLayer {
   return R({ x, y, width: w, height: h, fill, opacity, cornerRadius });
 }
+/**
+ * A soft vertical fade (fake gradient via stacked rects) — works in both the
+ * server and Konva renderers. Use it to melt a solid band into a photo or to
+ * darken the bottom of a photo smoothly. opacity goes fromOp (top) → toOp (bottom).
+ */
+/** Drop any alpha from a colour so a fade reaches full strength (the per-band
+ *  opacity provides the gradient — a translucent base would make it too weak). */
+export function forceOpaque(c: string): string {
+  const m = c.match(/rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)/i);
+  return m ? `rgb(${m[1]}, ${m[2]}, ${m[3]})` : c;
+}
+export function fadeStrip(x: number, y: number, w: number, h: number, fill: string, fromOp: number, toOp: number, steps = 12): Layer[] {
+  const out: Layer[] = [];
+  const solid = forceOpaque(fill);
+  const n = Math.max(steps, Math.round(h / 5)); // ~5px per band → no visible banding
+  const sh = h / n;
+  for (let i = 0; i < n; i++) {
+    const op = fromOp + (toOp - fromOp) * (i / (n - 1));
+    out.push(R({ x, y: y + i * sh, width: w, height: Math.ceil(sh) + 1, fill: solid, opacity: Math.max(0, Math.min(1, op)) }));
+  }
+  return out;
+}
 /** CTA pill = rounded rect + centered label. */
 export function ctaPill(x: number, y: number, w: number, label: string, fill: string, textColor: string, align: 'left' | 'center' = 'center'): Layer[] {
   return [

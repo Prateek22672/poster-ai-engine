@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import { isAdminAuthed } from '@/lib/security/admin-auth';
-import { DEFAULT_THEMES, COLOR_LABELS } from '@/lib/templates/realestate/theme';
+import { DEFAULT_THEMES, COLOR_LABELS, FONTS, DEFAULT_FONT } from '@/lib/templates/realestate/theme';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +14,7 @@ async function readSaved(): Promise<Record<string, Record<string, string>>> {
 
 // Public read — the studio loads defaults + saved overrides to render the pickers.
 export async function GET() {
-  return NextResponse.json({ defaults: DEFAULT_THEMES, labels: COLOR_LABELS, saved: await readSaved() });
+  return NextResponse.json({ defaults: DEFAULT_THEMES, labels: COLOR_LABELS, fonts: FONTS, defaultFonts: DEFAULT_FONT, saved: await readSaved() });
 }
 
 // Password-gated write — persists the full overrides map into the committed JSON.

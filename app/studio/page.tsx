@@ -102,7 +102,7 @@ export default function PreviewPage() {
             <div key={a.id} className="flex flex-col items-center gap-2">
               <div className="text-[11px] font-medium text-white/90 bg-ink/85 backdrop-blur rounded-full px-3 py-1">{a.label} <span className="text-white/40">({a.id})</span></div>
               <Link href={`/studio/${a.id}`} className="rounded-xl overflow-hidden border border-white/15 shadow-2xl cursor-pointer hover:ring-2 hover:ring-white/50 hover:scale-[1.01] transition">
-                <PosterCanvas layout={a.build(c, hero, hero ? [hero] : [])} scale={0.3} />
+                <PosterCanvas layout={a.build(c, hero, hero ? [hero] : [])} scale={0.22} />
               </Link>
               <Link href={`/studio/${a.id}`} className="flex items-center gap-1.5 text-[11px] font-medium text-white/85 hover:text-white bg-ink/85 backdrop-blur border border-white/10 rounded-full px-3 py-1.5 transition shadow-md">
                 <SlidersHorizontal className="w-3 h-3 text-indigo-300" /> Open in Studio
@@ -113,7 +113,7 @@ export default function PreviewPage() {
             <div key={a.id} className="flex flex-col items-center gap-2">
               <div className="text-[11px] font-medium text-emerald-300 bg-ink/85 backdrop-blur rounded-full px-3 py-1">{a.label} <span className="text-white/40">(custom)</span></div>
               <Link href={`/studio/new?edit=${a.id}`} className="rounded-xl overflow-hidden border border-emerald-500/30 shadow-2xl cursor-pointer hover:ring-2 hover:ring-emerald-400/50 hover:scale-[1.01] transition">
-                <PosterCanvas layout={a.build(c, hero, hero ? [hero, hero, hero, hero] : [])} scale={0.3} />
+                <PosterCanvas layout={a.build(c, hero, hero ? [hero, hero, hero, hero] : [])} scale={0.22} />
               </Link>
               <Link href={`/studio/new?edit=${a.id}`} className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-300 hover:text-emerald-200 bg-ink/85 backdrop-blur border border-white/10 rounded-full px-3 py-1.5 transition shadow-md">
                 <Pencil className="w-3 h-3" /> Edit in Builder
@@ -131,9 +131,16 @@ export default function PreviewPage() {
 function StudioWelcome() {
   const [show, setShow] = useState(false);
   useEffect(() => {
-    try { if (sessionStorage.getItem('studio_welcome')) return; sessionStorage.setItem('studio_welcome', '1'); } catch { /* ignore */ }
+    let seen = false;
+    try { seen = sessionStorage.getItem('studio_welcome') === '1'; } catch { /* ignore */ }
+    if (seen) return;                 // already shown this session → skip
     setShow(true);
-    const t = setTimeout(() => setShow(false), 1700);
+    // Mark "seen" only AFTER it hides (not at start) so React Strict-Mode's
+    // double-invoke can't cancel the timer and leave it stuck on screen.
+    const t = setTimeout(() => {
+      setShow(false);
+      try { sessionStorage.setItem('studio_welcome', '1'); } catch { /* ignore */ }
+    }, 3000);
     return () => clearTimeout(t);
   }, []);
   return (

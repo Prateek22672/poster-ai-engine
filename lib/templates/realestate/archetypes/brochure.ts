@@ -37,7 +37,7 @@ export function buildBrochure(c: RealEstateContent, url?: string | null, photos?
   // ── Headline + "for sale" subhead ──────────────────────────────
   const NAME = c.projectName;
   const nameSize = fitFontSize(NAME, W - 2 * M, 78, 44, 2, true);
-  L.push(T({ text: NAME, x: M, y, fontSize: nameSize, fontFamily: 'Playfair Display', fontWeight: '700', color: WHITE, lineHeight: 1.0, width: W - 2 * M, align: 'center', role: 'headline' }));
+  L.push(T({ text: NAME, x: M, y, fontSize: nameSize, fontFamily: t.font, fontWeight: '700', color: WHITE, lineHeight: 1.0, width: W - 2 * M, align: 'center', role: 'headline' }));
   y += textHeight(NAME, nameSize, W - 2 * M, 1.0, true) + 8;
   L.push(T({ text: `–  ${clampOneLine(c.tagline, 24, W - 320, false)}  –`, x: 0, y, fontSize: 24, fontWeight: '500', color: GOLD, width: W, align: 'center' }));
 

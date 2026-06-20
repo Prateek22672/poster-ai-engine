@@ -17,7 +17,7 @@ export function buildGlassCards(c: RealEstateContent, url?: string | null, _phot
   let y = 90;
   if (c.developer || c.brand) { L.push(T({ text: clampOneLine((c.developer || c.brand || '').toUpperCase(), 22, W - 2 * M, false), x: M, y, fontSize: 22, fontWeight: '700', color: WHITE, letterSpacing: 4, width: W - 2 * M })); y += 46; }
   const ns = fitFontSize(c.projectName, W - 2 * M, 96, 50, 2, true);
-  L.push(T({ text: c.projectName, x: M, y, fontSize: ns, fontFamily: 'Playfair Display', fontWeight: '700', color: WHITE, lineHeight: 1.0, width: W - 2 * M, role: 'headline' }));
+  L.push(T({ text: c.projectName, x: M, y, fontSize: ns, fontFamily: t.font, fontWeight: '700', color: WHITE, lineHeight: 1.0, width: W - 2 * M, role: 'headline' }));
   y += textHeight(c.projectName, ns, W - 2 * M, 1.0, true) + 6;
   L.push(T({ text: clampOneLine(c.tagline.toUpperCase(), 20, W - 2 * M, false), x: M, y, fontSize: 20, fontWeight: '600', color: GOLD, letterSpacing: 4, width: W - 2 * M }));
 

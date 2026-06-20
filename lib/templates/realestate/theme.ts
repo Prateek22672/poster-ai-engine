@@ -23,6 +23,22 @@ export const DEFAULT_THEMES: Record<string, ColorMap> = {
   glasscards: { scrim: '#06101C', gold: '#D8B26A', white: '#FFFFFF', muted: 'rgba(255,255,255,0.78)', card: 'rgba(255,255,255,0.10)', cta: '#D8B26A', ctaText: '#1A1206' },
   framed: { scrim: '#0A1622', gold: '#CBA85E', white: '#FFFFFF', muted: 'rgba(255,255,255,0.75)', cta: '#CBA85E', ctaText: '#1A1206' },
   magazine: { col: '#14233A', gold: '#D8B26A', white: '#FFFFFF', muted: 'rgba(255,255,255,0.6)', cta: '#D8B26A', ctaText: '#14233A' },
+  ferro: { gold: '#C9A24B', white: '#FFFFFF', ink: '#1A1A1A', pill: '#EFE7D6', muted: 'rgba(255,255,255,0.85)' },
+};
+
+// Fonts bundled for the server renderer (and loadable in the studio preview).
+// Each template has a default headline font; the studio can override it.
+export const FONTS = [
+  'Playfair Display', 'Cormorant Garamond', 'Oswald', 'Syne', 'Switzer',
+  'Space Grotesk', 'Host Grotesk', 'Sansita Swashed', 'Climate Crisis', 'Gnomon', 'Karrik', 'Violet Sans',
+  'LT Avocado', 'LT Beverage', 'LT Crow', 'LT Delilah', 'LT Humor', 'LT Institute', 'LT Makeup',
+  'LT Oval', 'LT Renovate', 'LT Saeada', 'LT Sonoma', 'LT Soul', 'LT Spaz', 'LT Superior', 'LT Wave',
+] as const;
+export const DEFAULT_FONT: Record<string, string> = {
+  cove: 'Playfair Display', overlay: 'Syne', topband: 'Playfair Display', centered: 'Cormorant Garamond',
+  cinematic: 'Cormorant Garamond', gallery: 'Playfair Display', brochure: 'Playfair Display',
+  minimal: 'Playfair Display', splitpanel: 'Oswald', glasscards: 'Syne', framed: 'Cormorant Garamond',
+  magazine: 'Playfair Display', ferro: 'Cormorant Garamond',
 };
 
 // Friendly labels for the studio's colour pickers.
@@ -34,7 +50,9 @@ export const COLOR_LABELS: Record<string, string> = {
 
 const SAVED = overrides as Record<string, ColorMap>;
 
-/** Resolve a theme: defaults ⊕ saved overrides ⊕ live (studio) override. */
+/** Resolve a theme: defaults ⊕ saved overrides ⊕ live (studio) override. Always
+ *  includes `font` (the headline typeface) so templates can read t.font. */
 export function getTheme(id: string, live?: ColorMap | null): ColorMap {
-  return { ...(DEFAULT_THEMES[id] ?? {}), ...(SAVED[id] ?? {}), ...(live ?? {}) };
+  const base = { ...(DEFAULT_THEMES[id] ?? {}), font: DEFAULT_FONT[id] ?? 'Playfair Display' };
+  return { ...base, ...(SAVED[id] ?? {}), ...(live ?? {}) };
 }

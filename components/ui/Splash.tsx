@@ -13,10 +13,16 @@ export function Splash() {
 
   useEffect(() => {
     // Only the very first load of a session shows it — keeps in-app nav instant.
-    if (sessionStorage.getItem('pa_splash_seen')) return;
-    sessionStorage.setItem('pa_splash_seen', '1');
+    let seen = false;
+    try { seen = sessionStorage.getItem('pa_splash_seen') === '1'; } catch { /* ignore */ }
+    if (seen) return;
     setShow(true);
-    const t = setTimeout(() => setShow(false), 1100);
+    // Mark "seen" only after it hides, so Strict-Mode's double-invoke can't
+    // clear the timer and leave the splash stuck.
+    const t = setTimeout(() => {
+      setShow(false);
+      try { sessionStorage.setItem('pa_splash_seen', '1'); } catch { /* ignore */ }
+    }, 1300);
     return () => clearTimeout(t);
   }, []);
 

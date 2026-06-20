@@ -160,10 +160,18 @@ export function PosterCanvasInner({
   const ref = stageRef ?? internalRef;
   const readyFired = useRef(false);
 
+  // Load the template's declared fonts PLUS any font actually used by a text
+  // layer (e.g. a font picked in the studio) so the preview matches the output.
+  const usedFonts = Array.from(new Set([
+    ...layout.fonts,
+    ...layout.layers.filter((l) => l.type === 'text').map((l) => (l as TextLayer).fontFamily).filter(Boolean),
+  ])) as string[];
+  const fontsKey = usedFonts.join('|');
   useEffect(() => {
     setFontsLoaded(false);
-    loadFontsForCanvas(layout.fonts).then(() => setFontsLoaded(true));
-  }, [layout.fonts]);
+    loadFontsForCanvas(usedFonts).then(() => setFontsLoaded(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fontsKey]);
 
   // Track background-image readiness so onReady only fires once everything is painted
   const bgUrl = layout.layers.find(

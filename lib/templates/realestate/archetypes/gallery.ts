@@ -28,7 +28,7 @@ export function buildGallery(c: RealEstateContent, url?: string | null, photos?:
     ty += 40;
   }
   const nameSize = fitFontSize(c.projectName, W - 2 * M, 76, 40, 2, true);
-  L.push(T({ text: c.projectName, x: M, y: ty, fontSize: nameSize, fontFamily: 'Playfair Display', fontWeight: '700', color: WHITE, lineHeight: 1.0, width: W - 2 * M, role: 'headline' }));
+  L.push(T({ text: c.projectName, x: M, y: ty, fontSize: nameSize, fontFamily: t.font, fontWeight: '700', color: WHITE, lineHeight: 1.0, width: W - 2 * M, role: 'headline' }));
   ty += textHeight(c.projectName, nameSize, W - 2 * M, 1.0, true) + 10;
   L.push(T({ text: clampOneLine(c.tagline.toUpperCase(), 22, W - 2 * M, false), x: M, y: ty, fontSize: 22, fontWeight: '600', color: MUTED, letterSpacing: 3, width: W - 2 * M }));
 

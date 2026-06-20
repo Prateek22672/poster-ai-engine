@@ -21,7 +21,7 @@ export function buildSplitPanel(c: RealEstateContent, url?: string | null, _phot
   // big headline straddling the seam
   const ns = fitFontSize(c.projectName.toUpperCase(), W - 2 * M, 116, 56, 2, true);
   const nh = textHeight(c.projectName.toUpperCase(), ns, W - 2 * M, 0.96, true);
-  L.push(T({ text: c.projectName.toUpperCase(), x: M, y: SPLIT - nh / 2, fontSize: ns, fontFamily: 'Playfair Display', fontWeight: '800', color: WHITE, lineHeight: 0.96, letterSpacing: 1, width: W - 2 * M, align: 'center', role: 'headline' }));
+  L.push(T({ text: c.projectName.toUpperCase(), x: M, y: SPLIT - nh / 2, fontSize: ns, fontFamily: t.font, fontWeight: '800', color: WHITE, lineHeight: 0.96, letterSpacing: 1, width: W - 2 * M, align: 'center', role: 'headline' }));
 
   let y = SPLIT + nh / 2 + 26;
   L.push(T({ text: clampOneLine(c.tagline, 28, W - 2 * M, false), x: 0, y, fontSize: 28, fontFamily: 'Playfair Display', fontWeight: '500', color: GOLD, width: W, align: 'center' }));

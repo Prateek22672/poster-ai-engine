@@ -2,6 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Self-hosted display/text fonts (also used by the canvas studio) ─── */
+@font-face { font-family: 'Space Grotesk'; src: url('/fonts/SpaceGrotesk.ttf') format('truetype'); font-weight: 300 700; font-display: swap; }
+@font-face { font-family: 'Host Grotesk'; src: url('/fonts/HostGrotesk.ttf') format('truetype'); font-weight: 300 800; font-display: swap; }
+@font-face { font-family: 'Sansita Swashed'; src: url('/fonts/SansitaSwashed.ttf') format('truetype'); font-weight: 300 900; font-display: swap; }
+@font-face { font-family: 'Climate Crisis'; src: url('/fonts/ClimateCrisis.otf') format('opentype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Gnomon'; src: url('/fonts/Gnomon.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Karrik'; src: url('/fonts/Karrik.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Violet Sans'; src: url('/fonts/VioletSans.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+/* ─── LT display family ─── */
+@font-face { font-family: 'LT Avocado'; src: url('/fonts/LTAvocado.ttf') format('truetype'); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: 'LT Beverage'; src: url('/fonts/LTBeverage.otf') format('opentype'); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: 'LT Crow'; src: url('/fonts/LTCrow.ttf') format('truetype'); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: 'LT Delilah'; src: url('/fonts/LTDelilah.ttf') format('truetype'); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: 'LT Humor'; src: url('/fonts/LTHumor.ttf') format('truetype'); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: 'LT Institute'; src: url('/fonts/LTInstitute.otf') format('opentype'); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: 'LT Makeup'; src: url('/fonts/LTMakeup.otf') format('opentype'); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: 'LT Oval'; src: url('/fonts/LTOval.otf') format('opentype'); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: 'LT Renovate'; src: url('/fonts/LTRenovate.otf') format('opentype'); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: 'LT Saeada'; src: url('/fonts/LTSaeada.otf') format('opentype'); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: 'LT Sonoma'; src: url('/fonts/LTSonoma.otf') format('opentype'); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: 'LT Soul'; src: url('/fonts/LTSoul.otf') format('opentype'); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: 'LT Spaz'; src: url('/fonts/LTSpaz.otf') format('opentype'); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: 'LT Superior'; src: url('/fonts/LTSuperior.otf') format('opentype'); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: 'LT Wave'; src: url('/fonts/LTWave.otf') format('opentype'); font-weight: 400 700; font-display: swap; }
+
 /* ─── Design tokens ─────────────────────────────────────────────── */
 :root {
   --background: #080808;

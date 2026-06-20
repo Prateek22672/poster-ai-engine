@@ -23,7 +23,7 @@ export function buildMagazine(c: RealEstateContent, url?: string | null, _photos
   if (c.location) { L.push(T({ text: clampOneLine(c.location.toUpperCase(), 16, tw, false), x: PAD, y, fontSize: 16, fontWeight: '600', color: GOLD, letterSpacing: 4, width: tw })); y += 40; }
 
   const ns = fitFontSize(c.projectName, tw, 84, 40, 4, true);
-  L.push(T({ text: c.projectName, x: PAD, y, fontSize: ns, fontFamily: 'Playfair Display', fontWeight: '700', color: WHITE, lineHeight: 1.02, width: tw, role: 'headline' }));
+  L.push(T({ text: c.projectName, x: PAD, y, fontSize: ns, fontFamily: t.font, fontWeight: '700', color: WHITE, lineHeight: 1.02, width: tw, role: 'headline' }));
   y += textHeight(c.projectName, ns, tw, 1.02, true) + 18;
   L.push(T({ text: clampOneLine(c.tagline.toUpperCase(), 18, tw, false), x: PAD, y, fontSize: 18, fontWeight: '600', color: MUTED, letterSpacing: 2, width: tw }));
 

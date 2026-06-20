@@ -20,7 +20,7 @@ export function buildOverlay(c: RealEstateContent, url?: string | null, _photos?
   L.push(T({ text: clampOneLine(c.tagline.toUpperCase(), 22, CW, false), x: LX, y, fontSize: 22, fontWeight: '600', color: GOLD, letterSpacing: 4, width: CW })); y += 42;
 
   const nameSize = fitFontSize(c.projectName, CW, 90, 44, 3, true);
-  L.push(T({ text: c.projectName, x: LX, y, fontSize: nameSize, fontFamily: 'Syne', fontWeight: '700', color: WHITE, lineHeight: 1.0, width: CW, role: 'headline' }));
+  L.push(T({ text: c.projectName, x: LX, y, fontSize: nameSize, fontFamily: t.font, fontWeight: '700', color: WHITE, lineHeight: 1.0, width: CW, role: 'headline' }));
   y += textHeight(c.projectName, nameSize, CW, 1.0, true) + 22;
 
   L.push(T({ text: clampOneLine(c.priceValue, 46, 470, false), x: LX, y, fontSize: 46, fontWeight: '700', color: GOLD, width: 470 }));

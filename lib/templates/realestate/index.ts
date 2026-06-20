@@ -12,6 +12,7 @@ import { buildSplitPanel, splitpanelLabel } from './archetypes/splitpanel';
 import { buildGlassCards, glasscardsLabel } from './archetypes/glasscards';
 import { buildFramed, framedLabel } from './archetypes/framed';
 import { buildMagazine, magazineLabel } from './archetypes/magazine';
+import { buildFerro, ferroLabel } from './archetypes/ferro';
 import { buildFromSpec, type TemplateSpec } from './spec';
 import customSpecs from './custom-templates.json';
 
@@ -45,6 +46,7 @@ export const ARCHETYPES: Archetype[] = [
   { id: 'glasscards', label: glasscardsLabel, build: buildGlassCards },
   { id: 'framed', label: framedLabel, build: buildFramed },
   { id: 'magazine', label: magazineLabel, build: buildMagazine },
+  { id: 'ferro', label: ferroLabel, build: buildFerro },
   { id: GALLERY_ID, label: galleryLabel, build: buildGallery },
 ];
 

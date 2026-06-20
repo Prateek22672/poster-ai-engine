@@ -26,7 +26,7 @@ export function buildFramed(c: RealEstateContent, url?: string | null, _photos?:
   const ns = fitFontSize(c.projectName, W - 260, 116, 56, 3, true);
   const nh = textHeight(c.projectName, ns, W - 260, 1.0, true);
   y = Math.max(380, 500 - nh / 2);
-  L.push(T({ text: c.projectName, x: 130, y, fontSize: ns, fontFamily: 'Playfair Display', fontWeight: '700', color: WHITE, lineHeight: 1.0, width: W - 260, align: 'center', role: 'headline' }));
+  L.push(T({ text: c.projectName, x: 130, y, fontSize: ns, fontFamily: t.font, fontWeight: '700', color: WHITE, lineHeight: 1.0, width: W - 260, align: 'center', role: 'headline' }));
   y += nh + 26;
   L.push(T({ text: clampOneLine(c.tagline.toUpperCase(), 22, W - 260, false), x: 0, y, fontSize: 22, fontWeight: '600', color: GOLD, letterSpacing: 4, width: W, align: 'center' })); y += 64;
 

@@ -16,7 +16,7 @@ export function buildMinimal(c: RealEstateContent, url?: string | null, _photos?
   let y = 110;
   if (c.location) { L.push(T({ text: clampOneLine(c.location.toUpperCase(), 18, W - 2 * M, false), x: M, y, fontSize: 18, fontWeight: '600', color: GOLD, letterSpacing: 5, width: W - 2 * M })); y += 38; }
   const ns = fitFontSize(c.projectName, W - 2 * M, 92, 48, 2, true);
-  L.push(T({ text: c.projectName, x: M, y, fontSize: ns, fontFamily: 'Playfair Display', fontWeight: '700', color: INK, lineHeight: 1.0, width: W - 2 * M, role: 'headline' }));
+  L.push(T({ text: c.projectName, x: M, y, fontSize: ns, fontFamily: t.font, fontWeight: '700', color: INK, lineHeight: 1.0, width: W - 2 * M, role: 'headline' }));
   y += textHeight(c.projectName, ns, W - 2 * M, 1.0, true) + 16;
   L.push(R({ x: M, y, width: 64, height: 3, fill: GOLD })); y += 22;
   L.push(T({ text: clampOneLine(c.tagline, 22, W - 2 * M, false), x: M, y, fontSize: 22, fontWeight: '500', color: MUTED, width: W - 2 * M }));

@@ -19,7 +19,7 @@ export function buildCentered(c: RealEstateContent, url?: string | null, _photos
   const nameSize = fitFontSize(c.projectName, W - 160, 108, 52, 3, true);
   const nameLines = textHeight(c.projectName, nameSize, W - 160, 1.0, true);
   y = Math.max(360, 470 - nameLines / 2);
-  L.push(T({ text: c.projectName, x: 80, y, fontSize: nameSize, fontFamily: 'Cormorant Garamond', fontWeight: '700', color: WHITE, lineHeight: 1.0, width: W - 160, align: 'center', role: 'headline' }));
+  L.push(T({ text: c.projectName, x: 80, y, fontSize: nameSize, fontFamily: t.font, fontWeight: '700', color: WHITE, lineHeight: 1.0, width: W - 160, align: 'center', role: 'headline' }));
   y += nameLines + 24;
   
 

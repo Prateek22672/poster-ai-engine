@@ -39,7 +39,7 @@ export function buildCinematic(c: RealEstateContent, url?: string | null, _photo
   // ── Hero headline — thin, wide, uppercase (the "APARTMENTS" moment) ─
   const NAME = c.projectName.toUpperCase();
   const nameSize = fitFontSize(NAME, W - 2 * M, 122, 60, 2, true);
-  L.push(T({ text: NAME, x: M, y, fontSize: nameSize, fontFamily: 'Cormorant Garamond', fontWeight: '500', color: WHITE, lineHeight: 0.96, letterSpacing: 5, width: W - 2 * M, align: 'center', role: 'headline' }));
+  L.push(T({ text: NAME, x: M, y, fontSize: nameSize, fontFamily: t.font, fontWeight: '500', color: WHITE, lineHeight: 0.96, letterSpacing: 5, width: W - 2 * M, align: 'center', role: 'headline' }));
   // (headline ends here; the price + caption live in the dark bottom band below)
 
   // ── Price highlight — FIXED in the bottom band, centered around a gold bar.

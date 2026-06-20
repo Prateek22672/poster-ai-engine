@@ -12,7 +12,8 @@
     "gold": "yellow",
     "white": "#FFFFFF",
     "cta": "white",
-    "ctaText": "#1A1206"
+    "ctaText": "#1A1206",
+    "font": "LT Wave"
   },
   "gallery": {
     "navy": "#72624f",

@@ -50,6 +50,8 @@ export default function StudioPage() {
   const [labels, setLabels] = useState<Record<string, string>>({});
   const [colors, setColors] = useState<ColorMap>({});
   const [savedAll, setSavedAll] = useState<Record<string, ColorMap>>({});
+  const [fonts, setFonts] = useState<string[]>([]);
+  const [defaultFont, setDefaultFont] = useState('Playfair Display');
 
   const [content, setContent] = useState<RealEstateContent>(SAMPLE);
   const [overflow, setOverflow] = useState(false);
@@ -65,7 +67,10 @@ export default function StudioPage() {
     setDefaults(j.defaults[id] ?? {});
     setLabels(j.labels ?? {});
     setSavedAll(j.saved ?? {});
-    setColors({ ...(j.defaults[id] ?? {}), ...(j.saved[id] ?? {}) });
+    setFonts(j.fonts ?? []);
+    const df = j.defaultFonts?.[id] ?? 'Playfair Display';
+    setDefaultFont(df);
+    setColors({ ...(j.defaults[id] ?? {}), font: df, ...(j.saved[id] ?? {}) });
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
@@ -155,6 +160,17 @@ export default function StudioPage() {
               </button>
             </Section>
 
+            {/* Typography */}
+            <Section title="Typography">
+              <label className="block text-[10px] uppercase tracking-wider text-white/40 mb-1">Headline font</label>
+              <select value={colors.font ?? defaultFont} onChange={(e) => setColors((p) => ({ ...p, font: e.target.value }))}
+                className="w-full bg-white/[0.04] border border-white/12 rounded-lg px-2.5 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/40">
+                {fonts.map((f) => <option key={f} value={f} style={{ fontFamily: f }}>{f}{f === defaultFont ? '  (default)' : ''}</option>)}
+              </select>
+              <div className="mt-2 text-2xl text-white/85" style={{ fontFamily: colors.font ?? defaultFont }}>Abc — The Royals</div>
+              <p className="text-[10px] text-white/35 mt-1.5">Bundled fonts you can use anywhere. Each template ships a default that fits its mood (formula below).</p>
+            </Section>
+
             {/* Content */}
             <Section title="Text">
               {([['projectName', 'Headline'], ['tagline', 'Tagline'], ['priceLabel', 'Price label'], ['priceValue', 'Price value'], ['cta', 'Button text'], ['caption', 'Caption']] as Array<[keyof RealEstateContent, string]>).map(([k, l]) => (
@@ -162,6 +178,9 @@ export default function StudioPage() {
               ))}
             </Section>
           </fieldset>
+
+          {/* How the design intelligence works */}
+          <DesignIntelligence />
 
           {/* Save */}
           <div className="sticky bottom-0 p-3 border-t border-white/10 bg-ink">
@@ -175,6 +194,38 @@ export default function StudioPage() {
         </aside>
       </div>
     </Shell>
+  );
+}
+
+// Explains how the engine's "design intelligence" picks colours, fonts & layouts.
+function DesignIntelligence() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border-t border-white/10">
+      <button onClick={() => setOpen((v) => !v)} className="w-full flex items-center justify-between p-4 text-left">
+        <span className="text-[11px] uppercase tracking-widest text-indigo-300/80">How the design intelligence works (RAG)</span>
+        <span className="text-white/40 text-xs">{open ? '−' : '+'}</span>
+      </button>
+      {open && (
+        <div className="px-4 pb-4 space-y-3 text-[11px] leading-relaxed text-white/55">
+          <div>
+            <p className="font-semibold text-white/80 mb-0.5">1 · Photo-aware colour engine</p>
+            Every render samples the hero image → finds its dominant hue → builds a deep base in that hue and a <b>complementary</b> premium accent (warm photo → emerald, cool photo → gold). Text stays white/ink for contrast. So no two photos get the same palette.
+          </div>
+          <div>
+            <p className="font-semibold text-white/80 mb-0.5">2 · Font formula</p>
+            Each template ships a headline font matched to its mood — <span style={{ fontFamily: 'Playfair Display' }}>Playfair</span>/<span style={{ fontFamily: 'Cormorant Garamond' }}>Cormorant</span> for luxury &amp; elegant, <span style={{ fontFamily: 'Oswald' }}>Oswald</span> for bold/modern, <span style={{ fontFamily: 'Syne' }}>Syne</span> for contemporary, Switzer for body. Override it above per template.
+          </div>
+          <div>
+            <p className="font-semibold text-white/80 mb-0.5">3 · RAG design knowledge</p>
+            A library of reference posters (composition, palette, layer order, rules) is <b>chunked</b> into a description per reference, embedded, and <b>retrieved</b> by similarity to guide the AI-planned categories. Each template you build here is auto-converted into a RAG reference too — so saving teaches the engine.
+          </div>
+          <div className="text-white/35">
+            Real-estate uses the deterministic templates (the strongest, $0 look); RAG retrieval feeds the AI-planned categories. Add/curate references via the builder &amp; <code className="text-indigo-300">rag.ts</code>.
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
