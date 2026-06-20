@@ -41,10 +41,8 @@ export function buildBrochure(c: RealEstateContent, url?: string | null, photos?
   y += textHeight(NAME, nameSize, W - 2 * M, 1.0, true) + 8;
   L.push(T({ text: `–  ${clampOneLine(c.tagline, 24, W - 320, false)}  –`, x: 0, y, fontSize: 24, fontWeight: '500', color: GOLD, width: W, align: 'center' }));
 
-  // ── Hero photo band ────────────────────────────────────────────
-  if (hero) L.push(img(hero, M, 330, W - 2 * M, 300, 18));
-
-  // ── Circular amenity photos (overlap the band bottom) ──────────
+  // ── Circular amenity photos (overlap the main background photo) ──
+  // (no separate rectangle band — the main image already fills the top)
   const D = 188, gap = 44, total = 3 * D + 2 * gap, sx = (W - total) / 2, cy = 540;
   for (let i = 0; i < 3; i++) {
     const x = sx + i * (D + gap), src = circ(i);
