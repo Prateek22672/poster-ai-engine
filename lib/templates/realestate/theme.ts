@@ -35,10 +35,10 @@ export const FONTS = [
   'LT Oval', 'LT Renovate', 'LT Saeada', 'LT Sonoma', 'LT Soul', 'LT Spaz', 'LT Superior', 'LT Wave',
 ] as const;
 export const DEFAULT_FONT: Record<string, string> = {
-  cove: 'Playfair Display', overlay: 'Syne', topband: 'Playfair Display', centered: 'Cormorant Garamond',
-  cinematic: 'Cormorant Garamond', gallery: 'Playfair Display', brochure: 'Playfair Display',
-  minimal: 'Playfair Display', splitpanel: 'Oswald', glasscards: 'Syne', framed: 'Cormorant Garamond',
-  magazine: 'Playfair Display', ferro: 'Cormorant Garamond',
+  cove: 'LT Soul', overlay: 'Space Grotesk', topband: 'Playfair Display', centered: 'Cormorant Garamond',
+  cinematic: 'Cormorant Garamond', gallery: 'LT Superior', brochure: 'LT Soul',
+  minimal: 'Host Grotesk', splitpanel: 'LT Wave', glasscards: 'Syne', framed: 'Cormorant Garamond',
+  magazine: 'Space Grotesk', ferro: 'LT Soul',
 };
 
 // Friendly labels for the studio's colour pickers.

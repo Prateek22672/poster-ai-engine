@@ -55,3 +55,16 @@
  ✓ Compiled in 1314ms (592 modules)
  ✓ Compiled in 3.2s (592 modules)
  ✓ Compiled in 1095ms (592 modules)
+ ○ Compiling / ...
+ ✓ Compiled / in 2.7s (705 modules)
+ ⨯ [Error [InvariantError]: Invariant: Expected clientReferenceManifest to be defined. This is a bug in Next.js.]
+ ⨯ [Error [InvariantError]: Invariant: Expected clientReferenceManifest to be defined. This is a bug in Next.js.] {
+  page: '/'
+}
+ ○ Compiling /_error ...
+ ✓ Compiled /_error in 13.3s (1644 modules)
+Could not find files for /_error in .next/build-manifest.json
+Could not find files for /_error in .next/build-manifest.json
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\My Projects\poster-ai\.next\cache\webpack\client-development\7.pack.gz_' -> 'C:\My Projects\poster-ai\.next\cache\webpack\client-development\7.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\My Projects\poster-ai\.next\cache\webpack\server-development\4.pack.gz_' -> 'C:\My Projects\poster-ai\.next\cache\webpack\server-development\4.pack.gz'
+ ✓ Compiled in 1434ms (745 modules)
